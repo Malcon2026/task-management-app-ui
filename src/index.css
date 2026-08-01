@@ -517,3 +517,50 @@ input:focus, select:focus, textarea:focus {
     align-items: flex-start !important;
   }
 }
+
+/* ========== TODO LIST HEADER (MOBILE FIX) ========== */
+.todo-header {
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--border);
+  gap: 16px;
+  height: 52px;
+  flex-shrink: 0;
+}
+.todo-tabs {
+  display: flex;
+  height: 100%;
+}
+.todo-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+@media (max-width: 600px) {
+  .todo-header {
+    height: auto;
+    flex-direction: column;
+    padding: 0 16px;
+    align-items: stretch;
+    gap: 0;
+  }
+  .todo-tabs {
+    overflow-x: auto;
+    border-bottom: 1px solid var(--border);
+    height: 48px;
+    margin: 0 -16px;
+    padding: 0 16px;
+  }
+  .todo-tabs::-webkit-scrollbar { display: none; }
+  .todo-actions {
+    margin-left: 0;
+    padding: 12px 0;
+    justify-content: space-between;
+  }
+  .todo-actions > div:first-child {
+    flex: 1;
+  }
+}

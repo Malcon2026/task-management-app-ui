@@ -78,34 +78,33 @@ export function TodoList({ onEdit, onAdd }: TodoListProps) {
   return (
     <div className="view-root">
       {/* Header Bar */}
-      <div style={{
-        display: 'flex', alignItems: 'center', padding: '0 24px',
-        borderBottom: '1px solid var(--border)', gap: 0,
-        height: 52, flexShrink: 0, flexWrap: 'wrap',
-      }}>
-        {TABS.map(tab => (
-          <div
-            key={tab.key}
-            onClick={() => setFilter(tab.key)}
-            style={{
-              padding: '0 16px', height: '100%', display: 'flex', alignItems: 'center', gap: 6,
-              fontSize: 14, cursor: 'pointer',
-              borderBottom: `2px solid ${filter === tab.key ? 'var(--accent)' : 'transparent'}`,
-              color: filter === tab.key ? 'var(--text-primary)' : 'var(--text-muted)',
-              fontWeight: filter === tab.key ? 500 : 400,
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <span>{tab.label}</span>
-            {tab.count !== undefined && tab.count > 0 && (
-              <span style={{
-                fontSize: 11, color: filter === tab.key ? 'var(--accent)' : 'var(--text-muted)',
-              }}>{tab.count}</span>
-            )}
-          </div>
-        ))}
+      <div className="todo-header">
+        <div className="todo-tabs">
+          {TABS.map(tab => (
+            <div
+              key={tab.key}
+              onClick={() => setFilter(tab.key)}
+              style={{
+                padding: '0 16px', height: '100%', display: 'flex', alignItems: 'center', gap: 6,
+                fontSize: 14, cursor: 'pointer',
+                borderBottom: `2px solid ${filter === tab.key ? 'var(--accent)' : 'transparent'}`,
+                color: filter === tab.key ? 'var(--text-primary)' : 'var(--text-muted)',
+                fontWeight: filter === tab.key ? 500 : 400,
+                transition: 'all 0.15s ease',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <span>{tab.label}</span>
+              {tab.count !== undefined && tab.count > 0 && (
+                <span style={{
+                  fontSize: 11, color: filter === tab.key ? 'var(--accent)' : 'var(--text-muted)',
+                }}>{tab.count}</span>
+              )}
+            </div>
+          ))}
+        </div>
 
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div className="todo-actions">
           {/* Search */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: 6,
