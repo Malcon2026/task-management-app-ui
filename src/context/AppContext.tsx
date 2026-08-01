@@ -26,6 +26,7 @@ interface AppContextType {
   addTask: (t: Omit<Task, 'id' | 'createdAt'>) => Promise<void>;
   updateTask: (idOrTask: number | Task, data?: Partial<Task>) => Promise<void>;
   updateTaskStatus: (id: number, status: Status) => Promise<void>;
+  moveTask: (id: number, newStatus: Status, destinationIndex: number) => void;
   deleteTask: (id: number) => Promise<void>;
   toggleTask: (id: number) => Promise<void>;
 
@@ -158,19 +159,37 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // Fetch Tasks
         const { data: dbTasks, error: taskError } = await supabase.from('tasks').select('*').order('created_at', { ascending: false });
         if (!taskError && dbTasks) {
-          setTasks(dbTasks.map(t => ({
+          const orderStr = localStorage.getItem('taskOrder');
+          let parsedOrder: number[] = [];
+          if (orderStr) {
+             try { parsedOrder = JSON.parse(orderStr); } catch (e) {}
+          }
+
+          const mapped = dbTasks.map(t => ({
             id: Number(t.id),
             title: t.title,
             desc: t.desc || '',
-            priority: t.priority,
-            status: t.status,
+            priority: t.priority as Priority,
+            status: t.status as Status,
             tag: t.tag,
-            quadrant: t.quadrant,
+            quadrant: t.quadrant as Quadrant,
             due: t.due || '',
             assignedTo: Number(t.assigned_to) || 1,
             completed: Boolean(t.completed),
             createdAt: t.created_at ? new Date(t.created_at).getTime() : Date.now(),
-          })));
+          }));
+
+          if (parsedOrder.length > 0) {
+            mapped.sort((a, b) => {
+              let idxA = parsedOrder.indexOf(a.id);
+              let idxB = parsedOrder.indexOf(b.id);
+              if (idxA === -1) idxA = 99999;
+              if (idxB === -1) idxB = 99999;
+              return idxA - idxB;
+            });
+          }
+
+          setTasks(mapped);
         }
 
         // Fetch Activities
@@ -200,21 +219,40 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, async () => {
         const { data } = await supabase.from('tasks').select('*').order('created_at', { ascending: false });
         if (data) {
+          const orderStr = localStorage.getItem('taskOrder');
+          let parsedOrder: number[] = [];
+          if (orderStr) {
+             try { parsedOrder = JSON.parse(orderStr); } catch (e) {}
+          }
+
           setTasks(prev => {
-            return data.map(t => {
-              const n: Task = {
+            const mapped = data.map(t => {
+              return {
                 id: Number(t.id),
                 title: t.title,
                 desc: t.desc || '',
-                priority: t.priority,
-                status: t.status,
+                priority: t.priority as Priority,
+                status: t.status as Status,
                 tag: t.tag,
-                quadrant: t.quadrant,
+                quadrant: t.quadrant as Quadrant,
                 due: t.due || '',
                 assignedTo: Number(t.assigned_to) || 1,
                 completed: Boolean(t.completed),
                 createdAt: t.created_at ? new Date(t.created_at).getTime() : Date.now(),
               };
+            });
+
+            if (parsedOrder.length > 0) {
+              mapped.sort((a, b) => {
+                let idxA = parsedOrder.indexOf(a.id);
+                let idxB = parsedOrder.indexOf(b.id);
+                if (idxA === -1) idxA = 99999;
+                if (idxB === -1) idxB = 99999;
+                return idxA - idxB;
+              });
+            }
+
+            return mapped.map(n => {
               const p = prev.find(pt => pt.id === n.id);
               if (p && isTaskEqual(p, n)) return p;
               return n;
@@ -346,6 +384,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await updateTask(id, { status, completed: status === 'done' });
   }, [updateTask]);
 
+  const moveTask = useCallback((taskId: number, newStatus: Status, destinationIndex: number) => {
+    setTasks(prev => {
+      const copy = [...prev];
+      const taskIndex = copy.findIndex(t => t.id === taskId);
+      if (taskIndex === -1) return prev;
+      
+      const task = { ...copy[taskIndex], status: newStatus, completed: newStatus === 'done' };
+      copy.splice(taskIndex, 1);
+      
+      const statusTasks = copy.filter(t => t.status === newStatus);
+      statusTasks.splice(destinationIndex, 0, task);
+      
+      const otherTasks = copy.filter(t => t.status !== newStatus);
+      const newTasks = [...statusTasks, ...otherTasks];
+      
+      localStorage.setItem('taskOrder', JSON.stringify(newTasks.map(t => t.id)));
+      return newTasks;
+    });
+
+    updateTask(taskId, { status: newStatus, completed: newStatus === 'done' });
+  }, [updateTask]);
+
   const deleteTask = useCallback(async (id: number) => {
     setTasks(prev => prev.filter(t => t.id !== id));
     addActivity('delete', activeUserId, id, 'deleted task');
@@ -403,7 +463,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       activeUserId, activeUser, isLoading,
       isAuthenticated, login, logout,
       setCurrentView, setSidebarCollapsed, switchUser,
-      addTask, updateTask, updateTaskStatus, deleteTask, toggleTask,
+      addTask, updateTask, updateTaskStatus, moveTask, deleteTask, toggleTask,
       addUser, removeUser,
       addActivity, clearActivities,
       showToast, removeToast,

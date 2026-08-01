@@ -149,7 +149,7 @@ const KanbanCard = memo(function KanbanCard({
 });
 
 export function Kanban({ onEdit, onAdd }: KanbanProps) {
-  const { tasks, users, updateTaskStatus, deleteTask } = useApp();
+  const { tasks, users, updateTaskStatus, moveTask, deleteTask } = useApp();
   const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
 
   const tasksByStatus = useMemo(() => {
@@ -182,9 +182,9 @@ export function Kanban({ onEdit, onAdd }: KanbanProps) {
     const taskId = parseInt(draggableId, 10);
     const newStatus = destination.droppableId as Status;
     
-    // Optimistic update happens natively through our fast context
-    updateTaskStatus(taskId, newStatus);
-  }, [updateTaskStatus]);
+    // Optimistic update happens natively through our fast context with custom sort order
+    moveTask(taskId, newStatus, destination.index);
+  }, [moveTask]);
 
   const handleMoveClick = useCallback((taskId: number, newStatus: Status) => {
     updateTaskStatus(taskId, newStatus);
