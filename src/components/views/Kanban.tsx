@@ -225,19 +225,16 @@ export function Kanban({ onEdit, onAdd }: KanbanProps) {
       const task = tasks.find(t => t.id === id);
       if (task && task.status !== status) {
         updateTaskStatus(id, status);
-        showToast(`Moved "${task.title}" to ${status}`, 'info');
       }
     }
     draggedTaskIdRef.current = null;
     document.querySelectorAll('.kanban-col').forEach(el => el.classList.remove('col-drag-over'));
-  }, [tasks, updateTaskStatus, showToast]);
+  }, [tasks, updateTaskStatus]);
 
   const handleMoveClick = useCallback((taskId: number, newStatus: Status) => {
     updateTaskStatus(taskId, newStatus);
-    const task = tasks.find(t => t.id === taskId);
-    showToast(`Moved "${task?.title || 'Task'}" to ${newStatus}`, 'info');
     setActiveMenuId(null);
-  }, [tasks, updateTaskStatus, showToast]);
+  }, [updateTaskStatus]);
 
   const handleToggleMenu = useCallback((id: number) => {
     setActiveMenuId(prev => (prev === id ? null : id));

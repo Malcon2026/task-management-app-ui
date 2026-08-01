@@ -1,18 +1,108 @@
-import { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Task, Quadrant } from '../../types';
+import { Task, Quadrant, User } from '../../types';
 import { Avatar } from '../ui/Avatar';
 import {
-  PriorityUrgent, PriorityHigh, PriorityMedium, PriorityLow,
-  IconPlus, IconTrash, IconCheck, IconChevronDown, StatusDone, StatusTodo,
+  IconPlus, IconChevronDown, StatusTodo, StatusDone,
 } from '../ui/Icons';
 
-const QUADRANTS: { key: Quadrant; title: string; subtitle: string; color: string; bg: string }[] = [
-  { key: 'q1', title: 'Q1: Do First', subtitle: 'Urgent & Important (Immediate Action)', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.03)' },
-  { key: 'q2', title: 'Q2: Schedule', subtitle: 'Important, Not Urgent (Planning & Focus)', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.03)' },
-  { key: 'q3', title: 'Q3: Delegate', subtitle: 'Urgent, Not Important (Interruption / Pass)', color: '#eab308', bg: 'rgba(234, 179, 8, 0.03)' },
-  { key: 'q4', title: 'Q4: Eliminate', subtitle: 'Neither Urgent nor Important (Low Priority)', color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.03)' },
+const QUADRANTS: { key: Quadrant; title: string; subtitle: string; color: string; className: string }[] = [
+  { key: 'q1', title: 'Q1: Do First', subtitle: 'Urgent & Important', color: '#E5484D', className: 'matrix-q1' },
+  { key: 'q2', title: 'Q2: Schedule', subtitle: 'Not Urgent, Important', color: '#3B82F6', className: 'matrix-q2' },
+  { key: 'q3', title: 'Q3: Delegate', subtitle: 'Urgent, Not Important', color: '#F5A623', className: 'matrix-q3' },
+  { key: 'q4', title: 'Q4: Eliminate', subtitle: 'Not Urgent, Not Important', color: '#8B5CF6', className: 'matrix-q4' },
 ];
+
+interface MatrixCardProps {
+  task: Task;
+  user?: User;
+  onEdit: (task: Task) => void;
+  onToggle: (id: number) => void;
+  onMove: (task: Task, newQ: Quadrant) => void;
+  isMenuOpen: boolean;
+  onToggleMenu: (id: number | null) => void;
+  onDragStart: (e: React.DragEvent, task: Task) => void;
+  onDragEnd: (e: React.DragEvent) => void;
+}
+
+const MatrixCard = React.memo(({ 
+  task, user, onEdit, onToggle, onMove, isMenuOpen, onToggleMenu, onDragStart, onDragEnd 
+}: MatrixCardProps) => {
+  return (
+    <div
+      draggable
+      onDragStart={(e) => onDragStart(e, task)}
+      onDragEnd={onDragEnd}
+      onClick={() => onEdit(task)}
+      className="kanban-card"
+      style={{
+        background: 'var(--bg-secondary)',
+        border: '1px solid var(--border)',
+        borderRadius: 8, padding: '10px 12px',
+        cursor: 'grab', display: 'flex', alignItems: 'center', gap: 10,
+        position: 'relative',
+      }}
+    >
+      <button
+        onClick={e => { e.stopPropagation(); onToggle(task.id); }}
+        className="kanban-action-btn"
+      >
+        {task.completed ? <StatusDone size={14} color="var(--green)" /> : <StatusTodo size={14} />}
+      </button>
+
+      <span className={`todo-tag tag-${task.tag}`} style={{
+        fontSize: 9, padding: '1px 5px', borderRadius: 4,
+        fontWeight: 600, textTransform: 'uppercase', flexShrink: 0,
+      }}>{task.tag}</span>
+
+      <span style={{
+        fontSize: 13, color: task.completed ? 'var(--text-muted)' : 'var(--text-primary)', flex: 1,
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        fontWeight: 500,
+        textDecoration: task.completed ? 'line-through' : 'none'
+      }}>{task.title}</span>
+
+      {user && <Avatar user={user} size={20} fontSize={8} />}
+
+      <div style={{ position: 'relative' }}>
+        <button
+          onClick={e => { e.stopPropagation(); onToggleMenu(isMenuOpen ? null : task.id); }}
+          style={{
+            background: 'var(--bg-primary)', border: '1px solid var(--border)',
+            borderRadius: 4, color: 'var(--text-muted)', cursor: 'pointer',
+            padding: '2px 4px', fontSize: 10, display: 'flex', alignItems: 'center', gap: 2,
+          }}
+        >
+          <span>Q</span>
+          <IconChevronDown size={10} />
+        </button>
+
+        {isMenuOpen && (
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              position: 'absolute', right: 0, top: 22, zIndex: 100,
+              background: 'var(--bg-secondary)', border: '1px solid var(--border-light)',
+              borderRadius: 6, padding: 4, width: 140,
+              boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+            }}
+          >
+            {QUADRANTS.filter(qItem => qItem.key !== task.quadrant).map(qItem => (
+              <div
+                key={qItem.key}
+                onClick={() => onMove(task, qItem.key)}
+                className="kanban-menu-item"
+              >
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: qItem.color }} />
+                <span>{qItem.title.split(':')[0]}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+});
 
 interface MatrixProps {
   onEdit: (task: Task) => void;
@@ -20,176 +110,160 @@ interface MatrixProps {
 }
 
 export function Matrix({ onEdit, onAdd }: MatrixProps) {
-  const { tasks, users, updateTask, toggleTask, deleteTask, showToast } = useApp();
+  const { tasks, users, updateTask, toggleTask, showToast } = useApp();
   const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
 
-  function handleMoveQuadrant(task: Task, newQ: Quadrant) {
+  const dragItem = useRef<Task | null>(null);
+  const dragNode = useRef<HTMLElement | null>(null);
+  const dragOverQuadrant = useRef<Quadrant | null>(null);
+  const quadrantNodes = useRef<Map<Quadrant, HTMLElement>>(new Map());
+
+  const handleMoveQuadrant = useCallback((task: Task, newQ: Quadrant) => {
     updateTask({ ...task, quadrant: newQ });
-    showToast(`Reassigned to ${newQ.toUpperCase()}`, 'info');
     setActiveMenuId(null);
-  }
+  }, [updateTask]);
+
+  const handleDragStart = useCallback((e: React.DragEvent, task: Task) => {
+    dragItem.current = task;
+    dragNode.current = e.currentTarget as HTMLElement;
+    
+    // Defer adding dragging class so drag image looks normal
+    setTimeout(() => {
+      if (dragNode.current) {
+        dragNode.current.classList.add('is-dragging');
+      }
+    }, 0);
+  }, []);
+
+  const handleDragEnter = useCallback((e: React.DragEvent, targetQ: Quadrant) => {
+    e.preventDefault();
+    if (!dragItem.current) return;
+    
+    dragOverQuadrant.current = targetQ;
+    
+    // Update visual styles directly on DOM nodes
+    quadrantNodes.current.forEach((node, q) => {
+      if (q === targetQ && q !== dragItem.current?.quadrant) {
+        node.classList.add('drag-over');
+      } else {
+        node.classList.remove('drag-over');
+      }
+    });
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault(); // Necessary to allow dropping
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent, targetQ: Quadrant) => {
+    e.preventDefault();
+    
+    if (dragItem.current && dragItem.current.quadrant !== targetQ) {
+      updateTask({ ...dragItem.current, quadrant: targetQ });
+    }
+    
+    // Clean up
+    quadrantNodes.current.forEach(node => node.classList.remove('drag-over'));
+    if (dragNode.current) dragNode.current.classList.remove('is-dragging');
+    
+    dragItem.current = null;
+    dragNode.current = null;
+    dragOverQuadrant.current = null;
+  }, [updateTask]);
+
+  const handleDragEnd = useCallback((e: React.DragEvent) => {
+    quadrantNodes.current.forEach(node => node.classList.remove('drag-over'));
+    if (dragNode.current) dragNode.current.classList.remove('is-dragging');
+    dragItem.current = null;
+    dragNode.current = null;
+    dragOverQuadrant.current = null;
+  }, []);
 
   return (
-    <div
-      onClick={() => setActiveMenuId(null)}
-      style={{
-        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-        gap: 16, padding: 20, height: '100%', overflowY: 'auto',
-      }}
-    >
-      {QUADRANTS.map(q => {
-        const qTasks = tasks.filter(t => !t.completed && t.quadrant === q.key);
+    <div className="matrix-container animate-fadeInUp" onClick={() => setActiveMenuId(null)}>
+      <div className="matrix-layout">
+        
+        {/* Axes Labels */}
+        <div className="matrix-axis-y">
+          <span>Important</span>
+          <span>Not Important</span>
+        </div>
+        
+        <div className="matrix-axis-x">
+          <span>Urgent</span>
+          <span>Not Urgent</span>
+        </div>
 
-        return (
-          <div
-            key={q.key}
-            style={{
-              background: q.bg,
-              border: '1px solid var(--border)',
-              borderRadius: 10, padding: 16,
-              display: 'flex', flexDirection: 'column', gap: 12,
-            }}
-          >
-            {/* Quadrant Header */}
-            <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              borderBottom: '1px solid var(--border)', paddingBottom: 10,
-            }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: q.color }} />
-                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{q.title}</span>
-                  <span style={{
-                    fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg-primary)',
-                    padding: '2px 8px', borderRadius: 10, fontWeight: 600, border: '1px solid var(--border)',
-                  }}>{qTasks.length}</span>
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>{q.subtitle}</div>
-              </div>
-              <button
-                onClick={onAdd}
-                style={{
-                  background: 'none', border: 'none', color: 'var(--text-muted)',
-                  cursor: 'pointer', padding: 4, borderRadius: 4,
-                }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)'; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
-              >
-                <IconPlus size={14} />
-              </button>
-            </div>
-
-            {/* Tasks List */}
-            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {qTasks.map(t => {
-                const user = users.find(u => u.id === t.assignedTo);
-                const isMenuOpen = activeMenuId === t.id;
-
-                return (
-                  <div
-                    key={t.id}
-                    onClick={() => onEdit(t)}
-                    style={{
-                      background: 'var(--bg-secondary)',
-                      border: '1px solid var(--border)',
-                      borderRadius: 8, padding: '10px 12px',
-                      cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10,
-                      transition: 'all 0.15s ease',
-                      position: 'relative',
-                    }}
-                    onMouseEnter={e => {
-                      (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-light)';
-                      (e.currentTarget as HTMLElement).style.background = 'var(--bg-tertiary)';
-                    }}
-                    onMouseLeave={e => {
-                      (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)';
-                      (e.currentTarget as HTMLElement).style.background = 'var(--bg-secondary)';
-                    }}
-                  >
-                    {/* Toggle Done */}
-                    <button
-                      onClick={e => { e.stopPropagation(); toggleTask(t.id); }}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}
-                    >
-                      <StatusTodo size={14} />
-                    </button>
-
-                    {/* Tag */}
-                    <span className={`todo-tag tag-${t.tag}`} style={{
-                      fontSize: 9, padding: '1px 5px', borderRadius: 4,
-                      fontWeight: 600, textTransform: 'uppercase', flexShrink: 0,
-                    }}>{t.tag}</span>
-
-                    {/* Title */}
+        {/* Quadrants */}
+        {QUADRANTS.map(q => {
+          const qTasks = tasks.filter(t => !t.completed && t.quadrant === q.key);
+          
+          return (
+            <div
+              key={q.key}
+              ref={el => {
+                if (el) quadrantNodes.current.set(q.key, el);
+                else quadrantNodes.current.delete(q.key);
+              }}
+              className={`matrix-quadrant ${q.className}`}
+              onDragEnter={(e) => handleDragEnter(e, q.key)}
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, q.key)}
+            >
+              {/* Header */}
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '16px 16px 12px 16px', borderBottom: '1px solid var(--border)'
+              }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: q.color }} />
+                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{q.title}</span>
                     <span style={{
-                      fontSize: 13, color: 'var(--text-primary)', flex: 1,
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      fontWeight: 500,
-                    }}>{t.title}</span>
-
-                    {/* Assignee Avatar */}
-                    {user && <Avatar user={user} size={20} fontSize={8} />}
-
-                    {/* Move Quadrant Dropdown Trigger */}
-                    <div style={{ position: 'relative' }}>
-                      <button
-                        onClick={e => { e.stopPropagation(); setActiveMenuId(isMenuOpen ? null : t.id); }}
-                        style={{
-                          background: 'var(--bg-primary)', border: '1px solid var(--border)',
-                          borderRadius: 4, color: 'var(--text-muted)', cursor: 'pointer',
-                          padding: '2px 4px', fontSize: 10, display: 'flex', alignItems: 'center', gap: 2,
-                        }}
-                      >
-                        <span>Q</span>
-                        <IconChevronDown size={10} />
-                      </button>
-
-                      {/* Dropdown Menu */}
-                      {isMenuOpen && (
-                        <div
-                          onClick={e => e.stopPropagation()}
-                          style={{
-                            position: 'absolute', right: 0, top: 22, zIndex: 100,
-                            background: 'var(--bg-secondary)', border: '1px solid var(--border-light)',
-                            borderRadius: 6, padding: 4, width: 140,
-                            boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-                          }}
-                        >
-                          {QUADRANTS.filter(qItem => qItem.key !== t.quadrant).map(qItem => (
-                            <div
-                              key={qItem.key}
-                              onClick={() => handleMoveQuadrant(t, qItem.key)}
-                              style={{
-                                padding: '6px 8px', borderRadius: 4, fontSize: 11,
-                                color: 'var(--text-primary)', cursor: 'pointer',
-                                display: 'flex', alignItems: 'center', gap: 6,
-                              }}
-                              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)'; }}
-                              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-                            >
-                              <div style={{ width: 6, height: 6, borderRadius: '50%', background: qItem.color }} />
-                              <span>{qItem.title.split(':')[0]}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                      fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg-primary)',
+                      padding: '2px 8px', borderRadius: 10, fontWeight: 600, border: '1px solid var(--border)',
+                    }}>{qTasks.length}</span>
                   </div>
-                );
-              })}
-
-              {qTasks.length === 0 && (
-                <div style={{
-                  padding: '32px 16px', textAlign: 'center', color: 'var(--text-muted)',
-                  fontSize: 12, border: '1px dashed var(--border)', borderRadius: 8,
-                }}>
-                  No tasks in quadrant
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>{q.subtitle}</div>
                 </div>
-              )}
+                <button
+                  onClick={onAdd}
+                  className="kanban-action-btn"
+                >
+                  <IconPlus size={14} />
+                </button>
+              </div>
+
+              {/* Task List */}
+              <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {qTasks.map(t => (
+                  <MatrixCard
+                    key={t.id}
+                    task={t}
+                    user={users.find(u => u.id === t.assignedTo)}
+                    onEdit={onEdit}
+                    onToggle={toggleTask}
+                    onMove={handleMoveQuadrant}
+                    isMenuOpen={activeMenuId === t.id}
+                    onToggleMenu={setActiveMenuId}
+                    onDragStart={handleDragStart}
+                    onDragEnd={handleDragEnd}
+                  />
+                ))}
+
+                {qTasks.length === 0 && (
+                  <div style={{
+                    padding: '32px 16px', textAlign: 'center', color: 'var(--text-muted)',
+                    fontSize: 12, border: '1px dashed var(--border)', borderRadius: 8,
+                  }}>
+                    No tasks in quadrant
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }
