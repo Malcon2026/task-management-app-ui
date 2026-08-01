@@ -170,20 +170,20 @@ export function TodoList({ onEdit, onAdd }: TodoListProps) {
                 color: 'var(--text-primary)', fontSize: 14, fontFamily: 'inherit',
               }}
             />
-            {quickInput.trim() && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <button
-                  onClick={() => {
-                    const p: Priority[] = ['low', 'medium', 'high', 'urgent'];
-                    setQuickPriority(p[(p.indexOf(quickPriority) + 1) % 4]);
-                  }}
-                  style={{
-                    padding: '2px 8px', borderRadius: 4,
-                    border: '1px solid var(--border)', background: 'var(--bg-secondary)',
-                    color: 'var(--text-secondary)', fontSize: 11, cursor: 'pointer',
-                    textTransform: 'uppercase', fontWeight: 500,
-                  }}
-                >{quickPriority}</button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button
+                onClick={() => {
+                  const p: Priority[] = ['low', 'medium', 'high', 'urgent'];
+                  setQuickPriority(p[(p.indexOf(quickPriority) + 1) % 4]);
+                }}
+                style={{
+                  padding: '2px 8px', borderRadius: 4,
+                  border: '1px solid var(--border)', background: 'var(--bg-secondary)',
+                  color: 'var(--text-secondary)', fontSize: 11, cursor: 'pointer',
+                  textTransform: 'uppercase', fontWeight: 500,
+                }}
+              >{quickPriority}</button>
+              {quickInput.trim() && (
                 <button
                   onClick={quickAdd}
                   style={{
@@ -192,8 +192,8 @@ export function TodoList({ onEdit, onAdd }: TodoListProps) {
                     border: 'none', fontSize: 13, fontWeight: 500, cursor: 'pointer',
                   }}
                 >Add Task</button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           {/* Task Lists */}

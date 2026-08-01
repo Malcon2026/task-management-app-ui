@@ -157,17 +157,21 @@ export function ActivityLog() {
                 <div key={act.id} className="timeline-item">
                   <div className="timeline-dot" style={{ borderColor: config.color }}></div>
                   <div className="timeline-content">
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
-                        <Avatar user={user} size={20} fontSize={9} />
-                        <span style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: 13, flexShrink: 0 }}>{getUserName(user)}</span>
-                        <span style={{ color: 'var(--text-secondary)', fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {act.text}
-                          {task && <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}> "{task.title}"</span>}
-                          {targetUser && <span style={{ color: 'var(--text-muted)' }}> → {getUserName(targetUser)}</span>}
-                        </span>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                        <div style={{ paddingTop: 2 }}>
+                          <Avatar user={user} size={20} fontSize={9} />
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 6px', alignItems: 'center', flex: 1 }}>
+                          <span style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: 13, flexShrink: 0 }}>{getUserName(user)}</span>
+                          <span style={{ color: 'var(--text-secondary)', fontSize: 13, lineHeight: '1.4' }}>
+                            {act.text}
+                            {task && <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}> "{task.title}"</span>}
+                            {targetUser && <span style={{ color: 'var(--text-muted)' }}> → {getUserName(targetUser)}</span>}
+                          </span>
+                        </div>
                       </div>
-                      <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>{timeAgo(act.time)}</span>
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0, paddingTop: 4 }}>{timeAgo(act.time)}</span>
                     </div>
                   </div>
                 </div>
