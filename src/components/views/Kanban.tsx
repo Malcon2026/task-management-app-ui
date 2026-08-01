@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Task, Status } from '../../types';
-import { isOverdue, formatDate, getUserName } from '../../utils/helpers';
+import { Task, Status, User } from '../../types';
+import { isOverdue, formatDate } from '../../utils/helpers';
 import { Avatar } from '../ui/Avatar';
 import {
-  IconPlus, IconTrash, IconEdit, IconChevronDown,
+  IconPlus, IconTrash, IconChevronDown,
   StatusTodo, StatusInProgress, StatusReview, StatusDone,
   PriorityUrgent, PriorityHigh, PriorityMedium, PriorityLow,
 } from '../ui/Icons';
@@ -27,26 +27,48 @@ export function Kanban({ onEdit, onAdd }: KanbanProps) {
   const [dragOverCol, setDragOverCol] = useState<Status | null>(null);
   const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
 
-  // Drag and Drop Handlers
-  function handleDragStart(e: React.DragEvent, id: number) {
+  // Group tasks by status efficiently using useMemo
+  const tasksByStatus = useMemo(() => {
+    const map: Record<Status, Task[]> = {
+      todo: [],
+      inprogress: [],
+      review: [],
+      done: [],
+    };
+    tasks.forEach(t => {
+      if (map[t.status]) {
+        map[t.status].push(t);
+      }
+    });
+    return map;
+  }, [tasks]);
+
+  // Quick user map lookup
+  const usersById = useMemo(() => {
+    const map = new Map<number, User>();
+    users.forEach(u => map.set(u.id, u));
+    return map;
+  }, [users]);
+
+  // Drag and Drop Handlers with reference stability
+  const handleDragStart = useCallback((e: React.DragEvent, id: number) => {
     e.dataTransfer.setData('text/plain', id.toString());
     e.dataTransfer.effectAllowed = 'move';
     setDraggedId(id);
-  }
+  }, []);
 
-  function handleDragOver(e: React.DragEvent, status: Status) {
+  const handleDragEnd = useCallback(() => {
+    setDraggedId(null);
+    setDragOverCol(null);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent, status: Status) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    if (dragOverCol !== status) {
-      setDragOverCol(status);
-    }
-  }
+    setDragOverCol(prev => (prev === status ? prev : status));
+  }, []);
 
-  function handleDragLeave(e: React.DragEvent) {
-    e.preventDefault();
-  }
-
-  function handleDrop(e: React.DragEvent, status: Status) {
+  const handleDrop = useCallback((e: React.DragEvent, status: Status) => {
     e.preventDefault();
     const idStr = e.dataTransfer.getData('text/plain');
     const id = idStr ? parseInt(idStr, 10) : draggedId;
@@ -60,14 +82,14 @@ export function Kanban({ onEdit, onAdd }: KanbanProps) {
     }
     setDraggedId(null);
     setDragOverCol(null);
-  }
+  }, [draggedId, tasks, updateTaskStatus, showToast]);
 
-  function handleMoveClick(taskId: number, newStatus: Status) {
+  const handleMoveClick = useCallback((taskId: number, newStatus: Status) => {
     updateTaskStatus(taskId, newStatus);
     const task = tasks.find(t => t.id === taskId);
     showToast(`Moved "${task?.title || 'Task'}" to ${newStatus}`, 'info');
     setActiveMenuId(null);
-  }
+  }, [tasks, updateTaskStatus, showToast]);
 
   return (
     <div
@@ -78,21 +100,20 @@ export function Kanban({ onEdit, onAdd }: KanbanProps) {
       }}
     >
       {COLUMNS.map(col => {
-        const colTasks = tasks.filter(t => t.status === col.key);
+        const colTasks = tasksByStatus[col.key] || [];
         const isTarget = dragOverCol === col.key;
-        const Icon = col.icon;
 
         return (
           <div
             key={col.key}
+            className="kanban-col"
             onDragOver={e => handleDragOver(e, col.key)}
-            onDragLeave={handleDragLeave}
             onDrop={e => handleDrop(e, col.key)}
             style={{
               background: isTarget ? 'var(--bg-tertiary)' : col.bg,
               border: `1.5px solid ${isTarget ? 'var(--accent)' : 'var(--border)'}`,
               borderRadius: 10, display: 'flex', flexDirection: 'column',
-              height: '100%', overflow: 'hidden', transition: 'all 0.15s ease',
+              height: '100%', overflow: 'hidden',
               boxShadow: isTarget ? '0 0 12px var(--accent-dim)' : 'none',
             }}
           >
@@ -115,19 +136,8 @@ export function Kanban({ onEdit, onAdd }: KanbanProps) {
               </div>
               <button
                 onClick={onAdd}
-                style={{
-                  background: 'none', border: 'none', color: 'var(--text-muted)',
-                  cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center',
-                  borderRadius: 4, transition: 'all 0.15s',
-                }}
-                onMouseEnter={e => {
-                  (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)';
-                  (e.currentTarget as HTMLElement).style.background = 'var(--bg-tertiary)';
-                }}
-                onMouseLeave={e => {
-                  (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)';
-                  (e.currentTarget as HTMLElement).style.background = 'transparent';
-                }}
+                className="kanban-action-btn"
+                title="Add Task"
               >
                 <IconPlus size={14} />
               </button>
@@ -139,7 +149,7 @@ export function Kanban({ onEdit, onAdd }: KanbanProps) {
               display: 'flex', flexDirection: 'column', gap: 10,
             }}>
               {colTasks.map(t => {
-                const user = users.find(u => u.id === t.assignedTo);
+                const user = usersById.get(t.assignedTo);
                 const isDraggingThis = draggedId === t.id;
                 const isMenuOpen = activeMenuId === t.id;
 
@@ -150,28 +160,15 @@ export function Kanban({ onEdit, onAdd }: KanbanProps) {
                     key={t.id}
                     draggable
                     onDragStart={e => handleDragStart(e, t.id)}
+                    onDragEnd={handleDragEnd}
                     onClick={() => onEdit(t)}
+                    className={`kanban-card ${isDraggingThis ? 'is-dragging' : ''}`}
                     style={{
                       background: 'var(--bg-secondary)',
                       border: '1px solid var(--border)',
                       borderRadius: 8, padding: '12px 14px',
                       cursor: 'grab', display: 'flex', flexDirection: 'column', gap: 10,
-                      transition: 'all 0.15s ease',
-                      opacity: isDraggingThis ? 0.4 : 1,
-                      transform: isDraggingThis ? 'scale(0.98)' : 'none',
                       position: 'relative',
-                    }}
-                    onMouseEnter={e => {
-                      if (!isDraggingThis) {
-                        (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-light)';
-                        (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)';
-                      }
-                    }}
-                    onMouseLeave={e => {
-                      if (!isDraggingThis) {
-                        (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)';
-                        (e.currentTarget as HTMLElement).style.transform = 'none';
-                      }
                     }}
                   >
                     {/* Top row: tag & 1-click status switcher menu */}
@@ -215,13 +212,7 @@ export function Kanban({ onEdit, onAdd }: KanbanProps) {
                                 <div
                                   key={c.key}
                                   onClick={() => handleMoveClick(t.id, c.key)}
-                                  style={{
-                                    padding: '6px 8px', borderRadius: 4, fontSize: 11,
-                                    color: 'var(--text-primary)', cursor: 'pointer',
-                                    display: 'flex', alignItems: 'center', gap: 6,
-                                  }}
-                                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)'; }}
-                                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                                  className="kanban-menu-item"
                                 >
                                   <div style={{ width: 6, height: 6, borderRadius: '50%', background: c.color }} />
                                   <span>{c.label}</span>
@@ -255,12 +246,8 @@ export function Kanban({ onEdit, onAdd }: KanbanProps) {
                         {user && <Avatar user={user} size={20} fontSize={8} />}
                         <button
                           onClick={e => { e.stopPropagation(); deleteTask(t.id); }}
-                          style={{
-                            background: 'none', border: 'none', color: 'var(--text-muted)',
-                            cursor: 'pointer', padding: 2, opacity: 0.5,
-                          }}
-                          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--red)'; (e.currentTarget as HTMLElement).style.opacity = '1'; }}
-                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = '0.5'; (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
+                          className="kanban-delete-btn"
+                          title="Delete Task"
                         >
                           <IconTrash size={12} />
                         </button>

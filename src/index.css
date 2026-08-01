@@ -134,8 +134,68 @@ body {
 .q4-badge { background: var(--bg-tertiary); color: var(--text-muted); }
 
 /* ========== KANBAN ========== */
-.kanban-card-dragging { opacity: 0.4; }
-.kanban-col-drag-over { background: var(--bg-hover) !important; }
+.kanban-col {
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.kanban-card {
+  transition: transform 0.15s ease, opacity 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+  will-change: transform, opacity;
+}
+.kanban-card:hover {
+  border-color: var(--border-light) !important;
+  transform: translateY(-1px);
+}
+.kanban-card.is-dragging {
+  opacity: 0.4 !important;
+  transform: scale(0.98) !important;
+}
+.kanban-card.is-dragging:hover {
+  border-color: var(--border) !important;
+  transform: scale(0.98) !important;
+}
+.kanban-action-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  border-radius: 4px;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+.kanban-action-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+}
+.kanban-delete-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px;
+  opacity: 0.5;
+  transition: color 0.15s ease, opacity 0.15s ease;
+}
+.kanban-delete-btn:hover {
+  color: var(--red);
+  opacity: 1;
+}
+.kanban-menu-item {
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background-color 0.12s ease;
+}
+.kanban-menu-item:hover {
+  background: var(--bg-hover);
+}
+
 
 /* ========== ANIMATIONS (minimal) ========== */
 @keyframes fadeIn {
