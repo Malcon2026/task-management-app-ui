@@ -76,7 +76,7 @@ export function TodoList({ onEdit, onAdd }: TodoListProps) {
   ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg-primary)' }}>
+    <div className="view-root">
       {/* Header Bar */}
       <div style={{
         display: 'flex', alignItems: 'center', padding: '0 24px',
@@ -148,15 +148,15 @@ export function TodoList({ onEdit, onAdd }: TodoListProps) {
       </div>
 
       {/* Content Area */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '24px 0' }}>
-        <div style={{ maxWidth: 800, margin: '0 auto', padding: '0 24px' }}>
+      <div className="view-scroll">
+        <div className="content-container">
           
-          <div style={{ fontSize: 24, fontWeight: 700, marginBottom: 24, color: 'var(--text-primary)' }}>
+          <div className="page-title">
             {TABS.find(t => t.key === filter)?.label}
           </div>
 
           {/* Quick Add Inline */}
-          <div className="todoist-row" style={{ borderBottom: 'none', padding: '8px 0', marginBottom: 16 }}>
+          <div className="todoist-row quick-add">
             <div style={{ width: 16, display: 'flex', justifyContent: 'center' }}>
               <IconPlus size={16} color="var(--accent)" />
             </div>

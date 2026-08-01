@@ -33,20 +33,14 @@ export function Dashboard({ onEdit, onAdd }: DashboardProps) {
       {/* Main Split Layout */}
       <div className="dashboard-layout">
         {/* Left Pane: Todoist List (Appears first on mobile due to DOM order + flex-column) */}
-        <div style={{
-          flex: '0 0 65%', display: 'flex', flexDirection: 'column',
-          background: 'var(--bg-primary)',
-          borderRadius: 12, border: '1px solid var(--border)', overflow: 'hidden'
-        }}>
+        <div className="dashboard-pane-left">
           <TodoList onEdit={onEdit} onAdd={onAdd} />
         </div>
 
         {/* Right Pane: Stats & Activity Timeline */}
-        <div style={{
-          flex: '1', display: 'flex', flexDirection: 'column', gap: 24,
-        }}>
+        <div className="dashboard-pane-right">
           {/* Simple Pie Chart Stats */}
-          <div style={{
+          <div className="pie-chart-container" style={{
             background: 'var(--bg-secondary)',
             borderRadius: 12, border: '1px solid var(--border)', padding: 24,
             display: 'flex', alignItems: 'center', gap: 24,

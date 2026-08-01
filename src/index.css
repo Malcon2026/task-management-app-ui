@@ -448,8 +448,8 @@ input:focus, select:focus, textarea:focus {
   border: 4px solid var(--bg-primary);
   box-shadow: 0 0 0 1px var(--border);
   position: relative;
+  flex-shrink: 0;
 }
-/* Inner hole to make it a donut chart (looks cleaner than full pie) */
 .pie-chart::after {
   content: "";
   position: absolute;
@@ -461,4 +461,59 @@ input:focus, select:focus, textarea:focus {
   background: var(--bg-secondary);
   border-radius: 50%;
   border: 1px solid var(--border);
+}
+
+/* ========== MOBILE LAYOUT FIXES ========== */
+.view-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-primary);
+}
+.view-scroll {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.dashboard-pane-left {
+  flex: 0 0 65%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.dashboard-pane-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+@media (max-width: 900px) {
+  .dashboard-layout {
+    flex-direction: column;
+    padding: 16px;
+    height: auto;
+  }
+  .dashboard-pane-left,
+  .dashboard-pane-right {
+    flex: none;
+    height: auto;
+    overflow: visible;
+  }
+  .dashboard-pane-left .view-root,
+  .dashboard-pane-right .view-root {
+    height: auto;
+  }
+  .dashboard-pane-left .view-scroll,
+  .dashboard-pane-right .view-scroll {
+    overflow-y: visible;
+    flex: none;
+  }
+  .pie-chart-container {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
 }

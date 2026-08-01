@@ -50,7 +50,7 @@ export function ActivityLog() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div className="view-root">
       {/* Navigation Filter Bar */}
       <div style={{
         display: 'flex', alignItems: 'center', padding: '0 20px',
