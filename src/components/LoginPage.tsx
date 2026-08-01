@@ -17,18 +17,27 @@ export function LoginPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErrorMessage('');
-    if (!email.trim()) { setErrorMessage('Please enter your email address'); return; }
-    if (!password) { setErrorMessage('Please enter your password'); return; }
+
+    if (!email.trim()) {
+      setErrorMessage('Please enter your email address');
+      return;
+    }
+    if (!password) {
+      setErrorMessage('Please enter your password');
+      return;
+    }
 
     setIsSubmitting(true);
+    
+    // Simulate brief authentication check
     setTimeout(() => {
       const success = login(email.trim(), password);
       setIsSubmitting(false);
       if (!success) {
-        setErrorMessage('Invalid credentials. Check email and password.');
-        showToast('Login failed — invalid credentials', 'error');
+        setErrorMessage('Invalid credentials. Password must be Malcon@Malcon123 and email must be an authorized account.');
+        showToast('❌ Login failed: Invalid email or password', 'error');
       }
-    }, 300);
+    }, 400);
   }
 
   function handleQuickSelect(accEmail: string) {
@@ -42,132 +51,171 @@ export function LoginPage() {
       height: '100vh', width: '100vw',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       background: 'var(--bg-primary)',
+      position: 'relative',
+      overflow: 'hidden',
     }}>
+      {/* Ambient background glow */}
+      <div style={{
+        position: 'absolute', inset: 0,
+        background: 
+          'radial-gradient(ellipse 60% 50% at 50% 35%, var(--accent-dim) 0%, transparent 70%),' +
+          'radial-gradient(ellipse 40% 40% at 80% 80%, rgba(168, 85, 247, 0.1) 0%, transparent 60%)',
+        pointerEvents: 'none',
+      }} />
+
+      {/* Glassmorphic Login Card */}
       <div className="modal-animate" style={{
-        width: '100%', maxWidth: 380,
+        width: '100%', maxWidth: 440,
         background: 'var(--bg-secondary)',
         border: '1px solid var(--border)',
-        borderRadius: 12,
-        padding: '32px 28px',
+        borderRadius: 20,
+        padding: '36px 32px',
+        boxShadow: '0 24px 80px rgba(0, 0, 0, 0.6), 0 0 32px var(--accent-dim)',
+        position: 'relative',
+        zIndex: 10,
       }}>
-        {/* Header */}
-        <div style={{ marginBottom: 24 }}>
+        {/* Gradient Top Accent Bar */}
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, height: 3,
+          background: 'var(--accent)',
+          borderRadius: '20px 20px 0 0',
+        }} />
+
+        {/* Logo & Header */}
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6,
-          }}>
-            <div style={{
-              width: 24, height: 24, borderRadius: 6,
-              background: 'var(--accent)', display: 'flex',
-              alignItems: 'center', justifyContent: 'center',
-              fontSize: 13, fontWeight: 700, color: '#fff',
-            }}>T</div>
-            <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>TaskFlow</span>
-          </div>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
-            Sign in to your workspace
+            width: 48, height: 48, margin: '0 auto 14px',
+            background: 'var(--accent)',
+            borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 22, fontWeight: 900, color: '#ffffff',
+            boxShadow: '0 4px 20px var(--border-light)',
+          }}>T</div>
+          <h1 style={{
+            fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em',
+            color: 'var(--text-primary)',
+          }}>TaskFlow Login</h1>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 6, fontWeight: 500 }}>
+            Sign in to access your Malconnexus workspace
           </p>
         </div>
 
         {/* Quick Account Selectors */}
-        <div style={{ marginBottom: 20 }}>
+        <div style={{ marginBottom: 22 }}>
           <div style={{
-            fontSize: 11, fontWeight: 500, color: 'var(--text-muted)',
-            textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8,
+            fontSize: 10, fontWeight: 700, color: 'var(--text-muted)',
+            textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 8,
           }}>
-            Accounts
+            Quick Sign-In (3 Authorized Accounts):
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
             {PRESET_ACCOUNTS.map((acc) => (
               <button
                 key={acc.email}
                 type="button"
                 onClick={() => handleQuickSelect(acc.email)}
                 style={{
-                  padding: '8px 12px', borderRadius: 8, textAlign: 'left',
-                  border: email === acc.email ? '1px solid rgba(94, 106, 210, 0.4)' : '1px solid var(--border)',
-                  background: email === acc.email ? 'var(--accent-dim)' : 'var(--bg-primary)',
-                  color: email === acc.email ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  fontSize: 13, fontWeight: 500, cursor: 'pointer',
-                  transition: 'all 0.15s',
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '7px 8px', borderRadius: 8,
+                  border: email === acc.email ? '1px solid var(--border-light)' : '1px solid var(--border)',
+                  background: email === acc.email ? 'var(--accent-dim)' : 'var(--bg-tertiary)',
+                  color: email === acc.email ? '#ffffff' : 'var(--text-secondary)',
+                  fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                  textAlign: 'center', transition: 'all 0.2s',
                 }}
               >
-                <span>{acc.label}</span>
-                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{acc.role}</span>
+                <div>{acc.label}</div>
+                <div style={{ fontSize: 9, opacity: 0.7, marginTop: 2 }}>{acc.role}</div>
               </button>
             ))}
           </div>
         </div>
 
-        {/* Error */}
+        {/* Error Message Alert */}
         {errorMessage && (
           <div style={{
-            padding: '8px 12px', borderRadius: 6,
-            background: 'var(--red-dim)',
-            border: '1px solid rgba(229, 72, 77, 0.2)',
-            color: 'var(--red)', fontSize: 12, marginBottom: 16,
-            fontWeight: 500,
+            padding: '10px 14px', borderRadius: 8,
+            background: 'rgba(255, 107, 107, 0.12)',
+            border: '1px solid rgba(255, 107, 107, 0.3)',
+            color: 'var(--red)', fontSize: 12, marginBottom: 18,
+            display: 'flex', alignItems: 'center', gap: 8, fontWeight: 500,
           }}>
-            {errorMessage}
+            <span>⚠️</span>
+            <span style={{ flex: 1 }}>{errorMessage}</span>
           </div>
         )}
 
-        {/* Form */}
+        {/* Login Form */}
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: 14 }}>
+          <div style={{ marginBottom: 18 }}>
             <label style={{
-              display: 'block', fontSize: 12, fontWeight: 500,
-              color: 'var(--text-secondary)', marginBottom: 4,
-            }}>Email</label>
+              display: 'block', fontSize: 11, fontWeight: 700,
+              color: 'var(--text-muted)', textTransform: 'uppercase',
+              letterSpacing: '0.12em', marginBottom: 6,
+            }}>
+              Email Address *
+            </label>
             <input
-              type="email" value={email}
+              type="email"
+              value={email}
               onChange={e => setEmail(e.target.value)}
-              placeholder="you@company.com"
+              placeholder="e.g. preetam@malconnexus.com"
+              required
               style={{
-                width: '100%', padding: '8px 12px',
-                background: 'var(--bg-input)', border: '1px solid var(--border)',
-                borderRadius: 8, color: 'var(--text-primary)',
-                fontSize: 13, outline: 'none', transition: 'border-color 0.15s',
+                width: '100%', padding: '11px 14px',
+                background: 'var(--bg-tertiary)',
+                border: '1px solid var(--border)',
+                borderRadius: 10, color: 'var(--text-primary)',
+                fontSize: 14, outline: 'none',
+                transition: 'all 0.2s',
               }}
             />
           </div>
 
-          <div style={{ marginBottom: 20 }}>
+          <div style={{ marginBottom: 24 }}>
             <label style={{
-              display: 'block', fontSize: 12, fontWeight: 500,
-              color: 'var(--text-secondary)', marginBottom: 4,
-            }}>Password</label>
+              display: 'block', fontSize: 11, fontWeight: 700,
+              color: 'var(--text-muted)', textTransform: 'uppercase',
+              letterSpacing: '0.12em', marginBottom: 6,
+            }}>
+              Password *
+            </label>
             <input
-              type="password" value={password}
+              type="password"
+              value={password}
               onChange={e => setPassword(e.target.value)}
-              placeholder="Enter password"
+              placeholder="Enter password..."
+              required
               style={{
-                width: '100%', padding: '8px 12px',
-                background: 'var(--bg-input)', border: '1px solid var(--border)',
-                borderRadius: 8, color: 'var(--text-primary)',
-                fontSize: 13, outline: 'none', transition: 'border-color 0.15s',
+                width: '100%', padding: '11px 14px',
+                background: 'var(--bg-tertiary)',
+                border: '1px solid var(--border)',
+                borderRadius: 10, color: 'var(--text-primary)',
+                fontSize: 14, outline: 'none',
+                transition: 'all 0.2s',
               }}
             />
           </div>
 
           <button
-            type="submit" disabled={isSubmitting}
+            type="submit"
+            disabled={isSubmitting}
             style={{
-              width: '100%', padding: '8px', borderRadius: 8, border: 'none',
-              background: 'var(--accent)', color: '#ffffff',
-              fontSize: 13, fontWeight: 600,
+              width: '100%', padding: '12px', borderRadius: 10, border: 'none',
+              background: 'var(--accent)',
+              color: '#ffffff', fontSize: 14, fontWeight: 700,
               cursor: isSubmitting ? 'wait' : 'pointer',
-              transition: 'background 0.15s',
+              transition: 'all 0.25s',
+              boxShadow: '0 4px 20px var(--border-light)',
+              letterSpacing: '0.02em',
             }}
-            onMouseEnter={e => { if (!isSubmitting) (e.currentTarget as HTMLElement).style.background = 'var(--accent-hover)'; }}
-            onMouseLeave={e => { if (!isSubmitting) (e.currentTarget as HTMLElement).style.background = 'var(--accent)'; }}
+            onMouseEnter={e => { if (!isSubmitting) (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 24px rgba(108, 92, 231, 0.6)'; }}
+            onMouseLeave={e => { if (!isSubmitting) (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 20px var(--border-light)'; }}
           >
-            {isSubmitting ? 'Signing in...' : 'Sign in'}
+            {isSubmitting ? 'Authenticating...' : 'Sign In to TaskFlow →'}
           </button>
         </form>
 
-        <div style={{ textAlign: 'center', marginTop: 16, fontSize: 11, color: 'var(--text-muted)' }}>
-          Password: <code style={{ color: 'var(--text-secondary)', background: 'var(--bg-primary)', padding: '1px 6px', borderRadius: 4, fontSize: 11 }}>Malcon@Malcon123</code>
+        <div style={{ textAlign: 'center', marginTop: 20, fontSize: 11, color: 'var(--text-muted)' }}>
+          Malconnexus Task Management System • Password: <code style={{ color: 'var(--accent)', background: 'rgba(108,92,231,0.1)', padding: '1px 6px', borderRadius: 4 }}>Malcon@Malcon123</code>
         </div>
       </div>
     </div>

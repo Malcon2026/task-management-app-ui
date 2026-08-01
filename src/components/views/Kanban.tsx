@@ -1,139 +1,235 @@
+import { useState, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Task, Status } from '../../types';
-import { isOverdue, formatDate } from '../../utils/helpers';
+import type { Task, Status } from '../../types';
+import { formatDate, isOverdue, getUserName } from '../../utils/helpers';
 import { Avatar } from '../ui/Avatar';
 
-const COLUMNS: { key: Status; label: string; icon: string; color: string }[] = [
-  { key: 'todo', label: 'Todo', icon: '○', color: 'var(--text-muted)' },
-  { key: 'inprogress', label: 'In Progress', icon: '◐', color: 'var(--yellow)' },
-  { key: 'review', label: 'In Review', icon: '◕', color: 'var(--blue)' },
-  { key: 'done', label: 'Done', icon: '●', color: 'var(--accent)' },
+const COLUMNS: { id: Status; label: string; color: string; gradient: string }[] = [
+  { id: 'todo', label: 'To Do', color: '#9895b0', gradient: 'linear-gradient(135deg, #9895b0, var(--accent))' },
+  { id: 'inprogress', label: 'In Progress', color: '#ffd43b', gradient: 'linear-gradient(135deg, #ffd43b, #ff922b)' },
+  { id: 'review', label: 'In Review', color: '#339af0', gradient: 'linear-gradient(135deg, #339af0, var(--accent))' },
+  { id: 'done', label: 'Done', color: '#51cf66', gradient: 'linear-gradient(135deg, #51cf66, #22d3ee)' },
 ];
-
-const PRIORITY_COLORS: Record<string, string> = {
-  high: 'var(--orange)',
-  medium: 'var(--yellow)',
-  low: 'var(--blue)',
-};
 
 interface KanbanProps {
   onEdit: (task: Task) => void;
-  onAddInStatus: (status: Status) => void;
+  onAddInStatus: (s: Status) => void;
 }
 
 export function Kanban({ onEdit, onAddInStatus }: KanbanProps) {
-  const { tasks, updateTask, users } = useApp();
+  const { tasks, users, updateTask, showToast } = useApp();
+  const [filterUserId, setFilterUserId] = useState<number | 'all'>('all');
+  const [dragOverCol, setDragOverCol] = useState<Status | null>(null);
+  const dragTaskId = useRef<number | null>(null);
 
-  function handleDragStart(e: React.DragEvent, taskId: number) {
-    e.dataTransfer.setData('taskId', String(taskId));
+  function handleDragStart(taskId: number) {
+    dragTaskId.current = taskId;
   }
 
-  function handleDrop(e: React.DragEvent, status: Status) {
-    e.preventDefault();
-    const taskId = Number(e.dataTransfer.getData('taskId'));
-    if (taskId) {
-      updateTask(taskId, { status, completed: status === 'done' });
+  function handleDrop(colId: Status) {
+    if (dragTaskId.current === null) return;
+    const task = tasks.find(t => t.id === dragTaskId.current);
+    if (task && task.status !== colId) {
+      updateTask(task.id, { status: colId, completed: colId === 'done' });
+      const colLabel = COLUMNS.find(c => c.id === colId)?.label || colId;
+      showToast(`📌 Moved to "${colLabel}"`, 'success');
     }
-    (e.currentTarget as HTMLElement).style.background = 'transparent';
-  }
-
-  function handleDragOver(e: React.DragEvent) {
-    e.preventDefault();
-    (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)';
-  }
-
-  function handleDragLeave(e: React.DragEvent) {
-    (e.currentTarget as HTMLElement).style.background = 'transparent';
+    dragTaskId.current = null;
+    setDragOverCol(null);
   }
 
   return (
-    <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-      {COLUMNS.map(col => {
-        const colTasks = tasks.filter(t => t.status === col.key);
-        return (
-          <div
-            key={col.key}
-            onDrop={e => handleDrop(e, col.key)}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+      {/* Tabs */}
+      <div style={{ display: 'flex', alignItems: 'center', padding: '0 28px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+        <div style={{
+          padding: '11px 16px', fontSize: 13, fontWeight: 600,
+          color: 'var(--text-primary)',
+          borderBottom: '2px solid var(--accent-hover)',
+        }}>▦ Board View</div>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
+          <select
+            value={filterUserId}
+            onChange={e => setFilterUserId(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
             style={{
-              flex: 1, display: 'flex', flexDirection: 'column',
-              borderRight: '1px solid var(--border)',
-              transition: 'background 0.1s',
-              minWidth: 0,
+              padding: '6px 12px', background: 'var(--bg-secondary)',
+              border: '1px solid var(--border)', borderRadius: 8,
+              color: 'var(--text-primary)', fontSize: 12, outline: 'none', height: 34,
+              cursor: 'pointer',
             }}
           >
-            {/* Column Header */}
-            <div style={{
-              padding: '10px 14px',
-              borderBottom: '1px solid var(--border)',
-              display: 'flex', alignItems: 'center', gap: 8,
-              flexShrink: 0,
-            }}>
-              <span style={{ color: col.color, fontSize: 14, fontFamily: 'system-ui' }}>{col.icon}</span>
-              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{col.label}</span>
-              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{colTasks.length}</span>
-              <span style={{ marginLeft: 'auto' }}>
-                <button
-                  onClick={() => onAddInStatus(col.key)}
-                  style={{
-                    width: 22, height: 22, border: 'none', background: 'transparent',
-                    color: 'var(--text-muted)', cursor: 'pointer', borderRadius: 4,
-                    fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'all 0.1s',
-                  }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)'; (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
-                >+</button>
-              </span>
-            </div>
+            <option value="all">All Members</option>
+            {users.map(u => <option key={u.id} value={u.id}>{getUserName(u)}</option>)}
+          </select>
+          <button onClick={() => onAddInStatus('todo')} style={{
+            padding: '6px 18px', height: 34, borderRadius: 8, border: 'none',
+            background: 'var(--accent)',
+            color: '#ffffff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            boxShadow: '0 2px 10px var(--border-light)',
+            transition: 'all 0.2s',
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 16px rgba(108, 92, 231, 0.5)'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 10px var(--border-light)'; }}
+          >+ Task</button>
+        </div>
+      </div>
 
-            {/* Cards */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: 6 }}>
-              {colTasks.map(t => {
-                const user = users.find(u => u.id === t.assignedTo);
-                const overdue = isOverdue(t.due) && !t.completed;
-                return (
-                  <div
-                    key={t.id}
-                    draggable
-                    onDragStart={e => handleDragStart(e, t.id)}
-                    onClick={() => onEdit(t)}
-                    style={{
-                      padding: '10px 12px', borderRadius: 6,
-                      border: '1px solid var(--border)',
-                      background: 'var(--bg-secondary)',
-                      cursor: 'pointer', marginBottom: 4,
-                      transition: 'background 0.08s',
-                    }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-tertiary)'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-secondary)'; }}
-                  >
-                    <div style={{
-                      fontSize: 13, color: t.completed ? 'var(--text-muted)' : 'var(--text-primary)',
-                      textDecoration: t.completed ? 'line-through' : 'none',
-                      marginBottom: 8, lineHeight: 1.4,
-                    }}>{t.title}</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <div style={{
-                        width: 3, height: 10, borderRadius: 2,
-                        background: PRIORITY_COLORS[t.priority] || 'var(--text-muted)',
-                      }} />
-                      <span className={`tag-${t.tag}`} style={{ fontSize: 10, padding: '1px 5px', borderRadius: 3, fontWeight: 500 }}>{t.tag}</span>
-                      {t.due && (
-                        <span style={{ fontSize: 11, color: overdue ? 'var(--red)' : 'var(--text-muted)' }}>{formatDate(t.due)}</span>
-                      )}
-                      <div style={{ marginLeft: 'auto' }}>
-                        {user && <Avatar user={user} size={18} fontSize={8} />}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+      {/* Board */}
+      <div style={{ flex: 1, overflow: 'hidden', padding: '0 28px 28px' }}>
+        <div style={{ display: 'flex', gap: 16, height: '100%', overflowX: 'auto', paddingTop: 24, paddingBottom: 8 }}>
+          {COLUMNS.map(col => {
+            let colTasks = tasks.filter(t => t.status === col.id);
+            if (filterUserId !== 'all') colTasks = colTasks.filter(t => t.assignedTo === filterUserId);
+
+            return (
+              <div
+                key={col.id}
+                className={dragOverCol === col.id ? 'kanban-col-drag-over' : ''}
+                onDragOver={e => { e.preventDefault(); setDragOverCol(col.id); }}
+                onDragLeave={() => setDragOverCol(null)}
+                onDrop={() => handleDrop(col.id)}
+                style={{
+                  width: 290, minWidth: 290, display: 'flex', flexDirection: 'column',
+                  background: 'var(--bg-secondary)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 14, maxHeight: '100%', transition: 'all 0.2s',
+                  position: 'relative',
+                  overflow: 'hidden',
+                }}
+              >
+                {/* Gradient top border */}
+                <div style={{
+                  position: 'absolute', top: 0, left: 0, right: 0, height: 2,
+                  background: col.gradient,
+                  borderRadius: '14px 14px 0 0',
+                }} />
+
+                {/* Column Header */}
+                <div style={{
+                  padding: '16px 16px 12px',
+                  borderBottom: '1px solid var(--border)',
+                  display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0,
+                }}>
+                  <div style={{
+                    width: 9, height: 9, borderRadius: '50%', background: col.color, flexShrink: 0,
+                    boxShadow: `0 0 8px ${col.color}40`,
+                  }} />
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{col.label}</div>
+                  <div style={{
+                    marginLeft: 'auto', fontSize: 11, fontWeight: 600,
+                    color: 'var(--accent)',
+                    background: 'var(--accent-dim)',
+                    border: '1px solid var(--accent-dim)',
+                    padding: '2px 8px', borderRadius: 8,
+                  }}>{colTasks.length}</div>
+                  <button onClick={() => onAddInStatus(col.id)} style={{
+                    width: 26, height: 26, border: '1px solid var(--border)',
+                    background: 'var(--bg-secondary)', color: 'var(--text-muted)',
+                    cursor: 'pointer', borderRadius: 6, fontSize: 16,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-light)'; (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
+                  >+</button>
+                </div>
+
+                {/* Cards */}
+                <div style={{ flex: 1, overflowY: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {colTasks.map(t => <KanbanCard key={t.id} task={t} onEdit={onEdit} onDragStart={() => handleDragStart(t.id)} />)}
+                </div>
+
+                {/* Add card btn */}
+                <button
+                  onClick={() => onAddInStatus(col.id)}
+                  style={{
+                    margin: '0 12px 12px', padding: 8,
+                    background: 'transparent', border: '1px dashed var(--border)',
+                    borderRadius: 8, color: 'var(--text-muted)', cursor: 'pointer',
+                    fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                    flexShrink: 0, transition: 'all 0.2s', fontWeight: 500,
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-light)'; (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
+                >＋ Add card</button>
+              </div>
+            );
+          })}
+
+          {/* Add column placeholder */}
+          <div
+            onClick={() => showToast('Custom columns coming soon!', 'info')}
+            style={{
+              width: 44, minWidth: 44, border: '2px dashed var(--border)',
+              borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', color: 'var(--text-muted)', fontSize: 20, flexShrink: 0,
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-light)'; (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
+          >+</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function KanbanCard({ task, onEdit, onDragStart }: { task: Task; onEdit: (t: Task) => void; onDragStart: () => void }) {
+  const { users } = useApp();
+  const user = users.find(u => u.id === task.assignedTo);
+  const overdue = isOverdue(task.due);
+
+  return (
+    <div
+      draggable
+      onDragStart={onDragStart}
+      onClick={() => onEdit(task)}
+      style={{
+        background: 'var(--bg-tertiary)',
+        border: '1px solid var(--border)',
+        borderRadius: 10, padding: 14, cursor: 'pointer',
+        transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+      }}
+      onMouseEnter={e => {
+        const el = e.currentTarget as HTMLElement;
+        el.style.background = 'var(--bg-active)';
+        el.style.borderColor = 'var(--border)';
+        el.style.transform = 'translateY(-3px)';
+        el.style.boxShadow = '0 8px 24px rgba(0,0,0,0.35), 0 0 0 1px var(--accent-dim)';
+      }}
+      onMouseLeave={e => {
+        const el = e.currentTarget as HTMLElement;
+        el.style.background = 'var(--bg-tertiary)';
+        el.style.borderColor = 'var(--border)';
+        el.style.transform = '';
+        el.style.boxShadow = '';
+      }}
+    >
+      {/* Label */}
+      <div style={{ marginBottom: 10 }}>
+        <span className={`todo-tag tag-${task.tag}`} style={{ fontSize: 10, padding: '3px 9px', borderRadius: 5, fontWeight: 600, letterSpacing: '0.03em' }}>{task.tag}</span>
+      </div>
+
+      {/* Title */}
+      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.5, marginBottom: 12 }}>{task.title}</div>
+
+      {/* Footer */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span
+          className={`priority-pill-${task.priority === 'high' ? 'high' : task.priority === 'medium' ? 'med' : 'low'}`}
+          style={{ fontSize: 10, padding: '3px 8px', borderRadius: 5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}
+        >{task.priority}</span>
+        {task.due && (
+          <span style={{ fontSize: 11, color: overdue ? 'var(--red)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 3, fontWeight: 500 }}>
+            📅 {formatDate(task.due)}
+          </span>
+        )}
+        {user && (
+          <div style={{ marginLeft: 'auto' }}>
+            <Avatar user={user} size={24} fontSize={10} />
           </div>
-        );
-      })}
+        )}
+      </div>
     </div>
   );
 }
