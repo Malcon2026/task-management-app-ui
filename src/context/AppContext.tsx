@@ -252,8 +252,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const localId = nextTaskId.current++;
     const newTask: Task = { ...data, id: localId, createdAt };
     setTasks(prev => [newTask, ...prev]);
-
-    let createdId = localId;
+    addActivity('create', activeUserId, localId, 'created task');
 
     if (isSupabaseConfigured) {
       try {
@@ -270,15 +269,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }).select('id').single();
 
         if (!error && dbResult) {
-          createdId = Number(dbResult.id);
+          const createdId = Number(dbResult.id);
           setTasks(prev => prev.map(t => t.id === localId ? { ...t, id: createdId } : t));
         }
       } catch (e) {
         console.error('Supabase task insert failed:', e);
       }
     }
-
-    addActivity('create', activeUserId, createdId, 'created task');
   }, [activeUserId, addActivity]);
 
   const updateTask = useCallback(async (idOrTask: number | Task, data?: Partial<Task>) => {
@@ -294,6 +291,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updateData } : t));
+    addActivity('update', activeUserId, id, 'updated task');
 
     if (isSupabaseConfigured) {
       try {
@@ -315,8 +313,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         console.error('Supabase task update failed:', e);
       }
     }
-
-    addActivity('update', activeUserId, id, 'updated task');
   }, [activeUserId, addActivity]);
 
   const updateTaskStatus = useCallback(async (id: number, status: Status) => {
@@ -325,6 +321,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const deleteTask = useCallback(async (id: number) => {
     setTasks(prev => prev.filter(t => t.id !== id));
+    addActivity('delete', activeUserId, id, 'deleted task');
 
     if (isSupabaseConfigured) {
       try {
@@ -333,8 +330,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         console.error('Supabase task delete failed:', e);
       }
     }
-
-    addActivity('delete', activeUserId, id, 'deleted task');
   }, [activeUserId, addActivity]);
 
   const toggleTask = useCallback(async (id: number) => {
@@ -345,6 +340,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const newStatus = completed ? 'done' : 'todo';
 
     setTasks(prev => prev.map(t => t.id === id ? { ...t, completed, status: newStatus } : t));
+    addActivity(!task.completed ? 'complete' : 'update', activeUserId, id, !task.completed ? 'completed task' : 'reopened task');
 
     if (isSupabaseConfigured) {
       try {
@@ -353,8 +349,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         console.error('Supabase toggle task failed:', e);
       }
     }
-
-    addActivity(!task.completed ? 'complete' : 'update', activeUserId, id, !task.completed ? 'completed task' : 'reopened task');
   }, [tasks, activeUserId, addActivity]);
 
   const clearActivities = useCallback(async () => {
