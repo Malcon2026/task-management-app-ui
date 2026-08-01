@@ -1,7 +1,9 @@
 import React, { useEffect } from 'react';
+import { IconX } from './Icons';
 
 interface ModalProps {
-  open: boolean;
+  open?: boolean;
+  isOpen?: boolean;
   onClose: () => void;
   title: string;
   children: React.ReactNode;
@@ -9,14 +11,16 @@ interface ModalProps {
   maxWidth?: number;
 }
 
-export function Modal({ open, onClose, title, children, footer, maxWidth = 560 }: ModalProps) {
+export function Modal({ open, isOpen, onClose, title, children, footer, maxWidth = 520 }: ModalProps) {
+  const isVisible = open !== undefined ? open : isOpen;
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  if (!open) return null;
+  if (!isVisible) return null;
 
   return (
     <div
@@ -26,56 +30,49 @@ export function Modal({ open, onClose, title, children, footer, maxWidth = 560 }
         background: 'rgba(0, 0, 0, 0.65)',
         zIndex: 1000,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: 20,
+        padding: 16,
       }}
     >
       <div
         className="modal-animate"
         style={{
-          background: 'var(--bg-tertiary)',
-          border: '1px solid var(--border-light)',
-          borderRadius: 16,
+          background: 'var(--bg-secondary)',
+          border: '1px solid var(--border)',
+          borderRadius: 10,
           width: '100%', maxWidth,
           maxHeight: '85vh', overflowY: 'auto',
           position: 'relative',
-          boxShadow: '0 24px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--accent-dim)',
         }}
       >
-        {/* Gradient top accent */}
-        <div style={{
-          position: 'absolute', top: 0, left: 0, right: 0, height: 2,
-          background: 'var(--accent)',
-          borderRadius: '16px 16px 0 0',
-        }} />
-
         {/* Header */}
         <div style={{
-          padding: '22px 24px 16px',
+          padding: '16px 20px',
           borderBottom: '1px solid var(--border)',
-          display: 'flex', alignItems: 'center', gap: 10,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
-          <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', flex: 1, letterSpacing: '-0.01em' }}>{title}</span>
-          <button onClick={onClose} style={{
-            width: 30, height: 30, border: '1px solid var(--border)',
-            background: 'var(--bg-secondary)', color: 'var(--text-muted)',
-            borderRadius: 8, cursor: 'pointer', fontSize: 14,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            transition: 'all 0.2s',
-          }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255, 107, 107, 0.3)'; (e.currentTarget as HTMLElement).style.color = 'var(--red)'; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
-          >✕</button>
+          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{title}</span>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'none', border: 'none', color: 'var(--text-muted)',
+              cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center',
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
+          >
+            <IconX size={16} />
+          </button>
         </div>
 
-        {/* Body */}
-        <div style={{ padding: '22px 24px' }}>{children}</div>
+        {/* Content */}
+        <div style={{ padding: 20 }}>{children}</div>
 
         {/* Footer */}
         {footer && (
           <div style={{
-            padding: '16px 24px',
-            borderTop: '1px solid var(--border)',
+            padding: '12px 20px', borderTop: '1px solid var(--border)',
             display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10,
+            background: 'var(--bg-primary)', borderRadius: '0 0 10px 10px',
           }}>
             {footer}
           </div>
@@ -85,76 +82,118 @@ export function Modal({ open, onClose, title, children, footer, maxWidth = 560 }
   );
 }
 
-/* Form helpers */
-export function FormGroup({ label, children }: { label: string; children: React.ReactNode }) {
+export function FormField({ label, children, hint, required }: {
+  label: string; children: React.ReactNode; hint?: string; required?: boolean;
+}) {
   return (
-    <div style={{ marginBottom: 18 }}>
+    <div style={{ marginBottom: 14 }}>
       <label style={{
-        display: 'block', fontSize: 11, fontWeight: 700,
-        color: 'var(--text-muted)', textTransform: 'uppercase',
-        letterSpacing: '0.12em', marginBottom: 8,
-      }}>{label}</label>
+        display: 'block', fontSize: 12, fontWeight: 500,
+        color: 'var(--text-secondary)', marginBottom: 6,
+      }}>
+        {label} {required && <span style={{ color: 'var(--red)' }}>*</span>}
+      </label>
+      {children}
+      {hint && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{hint}</div>}
+    </div>
+  );
+}
+
+export const FormGroup = FormField;
+
+export function FormRow({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
       {children}
     </div>
   );
 }
 
-const inputStyle: React.CSSProperties = {
-  width: '100%', padding: '10px 14px',
-  background: 'var(--bg-tertiary)',
-  border: '1px solid var(--border)',
-  borderRadius: 10, color: 'var(--text-primary)',
-  fontSize: 14, outline: 'none',
-  fontFamily: 'inherit',
-  transition: 'all 0.2s',
-};
-
 export function FormInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
-  return <input {...props} style={{ ...inputStyle, ...props.style }} />;
-}
-
-export function FormSelect(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select {...props} style={{ ...inputStyle, appearance: 'none', cursor: 'pointer', ...props.style }} />;
-}
-
-export function FormTextarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea {...props} style={{ ...inputStyle, minHeight: 90, resize: 'vertical', lineHeight: 1.5, ...props.style }} />;
-}
-
-export function FormRow({ children }: { children: React.ReactNode }) {
-  return <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>{children}</div>;
-}
-
-export function BtnPrimary(props: React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
-    <button {...props} style={{
-      padding: '8px 22px', borderRadius: 8, border: 'none',
-      background: 'var(--accent)',
-      color: '#ffffff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-      display: 'flex', alignItems: 'center', gap: 6,
-      transition: 'all 0.25s',
-      boxShadow: '0 2px 12px var(--border-light)',
-      ...props.style,
-    }}
-    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 20px rgba(108, 92, 231, 0.5)'; (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)'; }}
-    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 12px var(--border-light)'; (e.currentTarget as HTMLElement).style.transform = ''; }}
+    <input
+      {...props}
+      style={{
+        width: '100%', padding: '7px 10px',
+        background: 'var(--bg-primary)', border: '1px solid var(--border)',
+        borderRadius: 6, color: 'var(--text-primary)',
+        fontSize: 13, outline: 'none', transition: 'border-color 0.15s',
+        ...props.style,
+      }}
+      onFocus={e => { (e.target as HTMLElement).style.borderColor = 'var(--accent)'; }}
+      onBlur={e => { (e.target as HTMLElement).style.borderColor = 'var(--border)'; }}
     />
   );
 }
 
-export function BtnGhost(props: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+export function FormSelect({ children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
-    <button {...props} style={{
-      padding: '8px 22px', borderRadius: 8,
-      border: '1px solid var(--border)',
-      background: 'var(--bg-secondary)', color: 'var(--text-secondary)',
-      fontSize: 13, fontWeight: 500, cursor: 'pointer',
-      display: 'flex', alignItems: 'center', gap: 6,
-      transition: 'all 0.2s',
-      ...props.style,
-    }}
-    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)'; }}
-    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; }}
+    <select
+      {...props}
+      style={{
+        width: '100%', padding: '7px 10px',
+        background: 'var(--bg-primary)', border: '1px solid var(--border)',
+        borderRadius: 6, color: 'var(--text-primary)',
+        fontSize: 13, outline: 'none', cursor: 'pointer',
+        ...props.style,
+      }}
+    >
+      {children}
+    </select>
+  );
+}
+
+export function FormTextarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return (
+    <textarea
+      {...props}
+      style={{
+        width: '100%', padding: '7px 10px',
+        background: 'var(--bg-primary)', border: '1px solid var(--border)',
+        borderRadius: 6, color: 'var(--text-primary)',
+        fontSize: 13, outline: 'none', minHeight: 70, resize: 'vertical',
+        fontFamily: 'inherit',
+        ...props.style,
+      }}
+      onFocus={e => { (e.target as HTMLElement).style.borderColor = 'var(--accent)'; }}
+      onBlur={e => { (e.target as HTMLElement).style.borderColor = 'var(--border)'; }}
     />
+  );
+}
+
+export function BtnPrimary({ children, onClick, disabled }: { children: React.ReactNode; onClick?: () => void; disabled?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        padding: '6px 14px', borderRadius: 6,
+        background: 'var(--accent)', color: '#fff', border: 'none',
+        fontSize: 12, fontWeight: 500, cursor: 'pointer',
+        opacity: disabled ? 0.6 : 1, transition: 'background 0.15s',
+      }}
+      onMouseEnter={e => { if (!disabled) (e.currentTarget as HTMLElement).style.background = 'var(--accent-hover)'; }}
+      onMouseLeave={e => { if (!disabled) (e.currentTarget as HTMLElement).style.background = 'var(--accent)'; }}
+    >
+      {children}
+    </button>
+  );
+}
+
+export function BtnGhost({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        padding: '6px 14px', borderRadius: 6,
+        background: 'transparent', color: 'var(--text-muted)',
+        border: '1px solid var(--border)', fontSize: 12,
+        fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s',
+      }}
+      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-light)'; }}
+      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; }}
+    >
+      {children}
+    </button>
   );
 }

@@ -1,311 +1,281 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { View } from '../types';
+import { getUserName } from '../utils/helpers';
 import { Avatar } from './ui/Avatar';
-import { isOverdue, getUserName } from '../utils/helpers';
+import {
+  IconDashboard, IconIssues, IconBoard, IconMatrix,
+  IconActivity, IconMembers, IconLogout, IconMenu,
+  IconChevronDown, IconSearch, IconZap, IconArrowRight,
+} from './ui/Icons';
+import type { View } from '../types';
 
-const NAV_WORKSPACE = [
-  { id: 'dashboard' as View, icon: '⊞', label: 'Dashboard' },
-  { id: 'todo' as View, icon: '☑', label: 'Todo List' },
-  { id: 'matrix' as View, icon: '⊡', label: 'Eisenhower Matrix' },
-  { id: 'kanban' as View, icon: '▦', label: 'Kanban Board' },
-];
-const NAV_TEAM = [
-  { id: 'activity' as View, icon: '⚡', label: 'Activity Log' },
-  { id: 'users' as View, icon: '👥', label: 'Team Members' },
+const NAV_ITEMS: { key: View; icon: (p: any) => JSX.Element; label: string }[] = [
+  { key: 'dashboard', icon: IconDashboard, label: 'Dashboard' },
+  { key: 'todo', icon: IconIssues, label: 'Issues' },
+  { key: 'kanban', icon: IconBoard, label: 'Board' },
+  { key: 'matrix', icon: IconMatrix, label: 'Matrix' },
+  { key: 'activity', icon: IconActivity, label: 'Activity' },
+  { key: 'users', icon: IconMembers, label: 'Members' },
 ];
 
 export function Sidebar() {
-  const { tasks, users, activities, currentView, setCurrentView, sidebarCollapsed, setSidebarCollapsed, showToast } = useApp();
-  const [searchVal, setSearchVal] = useState('');
+  const { currentView, setCurrentView, tasks, users, showToast, activeUser, activeUserId, switchUser, logout } = useApp();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   const openCount = tasks.filter(t => !t.completed).length;
-  const inProgress = tasks.filter(t => t.status === 'inprogress').length;
-  const overdueCount = tasks.filter(t => !t.completed && isOverdue(t.due)).length;
+  const inProgressCount = tasks.filter(t => t.status === 'inprogress').length;
 
-  function getBadge(view: View): string {
-    if (view === 'todo') return openCount > 0 ? String(openCount) : '';
-    if (view === 'matrix') return overdueCount > 0 ? `${overdueCount}⚠` : String(tasks.filter(t => t.quadrant).length);
-    if (view === 'kanban') return inProgress > 0 ? String(inProgress) : '';
-    if (view === 'activity') return activities.length > 0 ? String(activities.length) : '';
-    if (view === 'users') return String(users.length);
-    return '';
+  function navTo(view: View) {
+    setCurrentView(view);
+    if (isMobile) setMobileOpen(false);
   }
 
-  function handleSearch(val: string) {
-    setSearchVal(val);
-    if (!val.trim()) return;
-    const results = tasks.filter(t =>
-      t.title.toLowerCase().includes(val.toLowerCase()) ||
-      (t.desc && t.desc.toLowerCase().includes(val.toLowerCase()))
-    );
-    if (results.length > 0) {
-      setCurrentView('todo');
-      showToast(`🔍 Found ${results.length} result(s) for "${val}"`, 'info');
-    } else {
-      showToast(`🔍 No results for "${val}"`, 'warning');
-    }
-  }
-
-  const { activeUser, activeUserId, switchUser, logout } = useApp();
-  const w = sidebarCollapsed ? 56 : 270;
-
-  return (
-    <aside style={{
-      width: w, minWidth: w, height: '100vh',
-      background: 'rgba(10, 10, 25, 0.9)',
-      borderRight: '1px solid var(--border)',
-      display: 'flex', flexDirection: 'column',
-      flexShrink: 0,
-      transition: 'width 0.25s cubic-bezier(0.16, 1, 0.3, 1), min-width 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-      overflow: 'hidden',
-      zIndex: 100,
-      position: 'relative',
-    }}>
-      {/* Ambient aurora glow at top */}
+  const sidebarContent = (
+    <>
+      {/* Workspace Header */}
       <div style={{
-        position: 'absolute', top: 0, left: 0, right: 0, height: 120,
-        background: 'transparent',
-        pointerEvents: 'none',
-      }} />
-
-      {/* Header */}
-      <div style={{
-        padding: '14px', height: 56,
+        padding: '12px 14px',
         borderBottom: '1px solid var(--border)',
         display: 'flex', alignItems: 'center', gap: 10,
-        position: 'relative',
+        flexShrink: 0,
       }}>
         <div style={{
-          width: 30, height: 30,
-          background: 'var(--accent)',
-          borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 14, fontWeight: 800, color: '#ffffff', flexShrink: 0, cursor: 'pointer',
-          boxShadow: '0 2px 10px var(--border)',
-          transition: 'box-shadow 0.3s',
+          width: 26, height: 26, borderRadius: 7,
+          background: 'var(--accent)', display: 'flex',
+          alignItems: 'center', justifyContent: 'center',
+          fontSize: 12, fontWeight: 700, color: '#fff',
         }}>T</div>
-        {!sidebarCollapsed && (
-          <>
-            <span style={{
-              fontSize: 15, fontWeight: 700, whiteSpace: 'nowrap',
-              color: 'var(--text-primary)',
-              letterSpacing: '-0.02em',
-            }}>TaskFlow</span>
-            <button
-              onClick={() => setSidebarCollapsed(true)}
-              style={{
-                marginLeft: 'auto', width: 26, height: 26, border: '1px solid var(--border)',
-                background: 'var(--bg-secondary)', color: 'var(--text-muted)',
-                cursor: 'pointer', borderRadius: 6, fontSize: 12,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'all 0.2s',
-              }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-light)'; (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
-            >‹</button>
-          </>
-        )}
-        {sidebarCollapsed && (
-          <button
-            onClick={() => setSidebarCollapsed(false)}
-            style={{
-              marginLeft: 'auto', width: 26, height: 26, border: '1px solid var(--border)',
-              background: 'var(--bg-secondary)', color: 'var(--text-muted)',
-              cursor: 'pointer', borderRadius: 6, fontSize: 12,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              transition: 'all 0.2s',
-            }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-light)'; (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
-          >›</button>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.2 }}>TaskFlow</div>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>Workspace</div>
+        </div>
+        {isMobile && (
+          <button onClick={() => setMobileOpen(false)} style={{
+            background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4,
+          }}><IconSearch size={14} /></button>
         )}
       </div>
 
       {/* Search */}
-      {!sidebarCollapsed && (
-        <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--border)' }}>
-          <input
-            type="text"
-            value={searchVal}
-            onChange={e => handleSearch(e.target.value)}
-            placeholder="🔍  Search tasks..."
-            style={{
-              width: '100%', padding: '8px 12px',
-              background: 'var(--bg-tertiary)',
-              border: '1px solid var(--border)',
-              borderRadius: 8, color: 'var(--text-primary)',
-              fontSize: 13, outline: 'none',
-              transition: 'all 0.2s',
-            }}
-          />
+      <div style={{ padding: '8px 10px', flexShrink: 0 }}>
+        <div
+          onClick={() => showToast('Search coming soon', 'info')}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '6px 10px', borderRadius: 6,
+            background: 'var(--bg-primary)',
+            border: '1px solid var(--border)',
+            cursor: 'pointer', transition: 'border-color 0.15s',
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-light)'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; }}
+        >
+          <IconSearch size={13} color="var(--text-muted)" />
+          <span style={{ fontSize: 12, color: 'var(--text-muted)', flex: 1 }}>Search...</span>
+          <span style={{
+            fontSize: 10, color: 'var(--text-muted)',
+            background: 'var(--bg-secondary)', padding: '1px 5px',
+            borderRadius: 3, border: '1px solid var(--border)',
+          }}>⌘K</span>
         </div>
-      )}
+      </div>
 
-      {/* Nav */}
-      <nav style={{ flex: 1, overflowY: 'auto', padding: '10px 0' }}>
-        {/* Workspace */}
-        {!sidebarCollapsed && (
-          <div style={{
-            padding: '6px 16px 6px', fontSize: 10, fontWeight: 700,
-            color: 'var(--text-muted)', textTransform: 'uppercase',
-            letterSpacing: '0.12em',
-          }}>
-            Workspace
-          </div>
-        )}
-        {NAV_WORKSPACE.map(item => (
-          <NavItem
-            key={item.id}
-            icon={item.icon}
-            label={item.label}
-            badge={getBadge(item.id)}
-            active={currentView === item.id}
-            collapsed={sidebarCollapsed}
-            onClick={() => setCurrentView(item.id)}
-          />
-        ))}
-
-        {!sidebarCollapsed && (
-          <div style={{
-            padding: '16px 16px 6px', fontSize: 10, fontWeight: 700,
-            color: 'var(--text-muted)', textTransform: 'uppercase',
-            letterSpacing: '0.12em',
-          }}>
-            Team
-          </div>
-        )}
-        {NAV_TEAM.map(item => (
-          <NavItem
-            key={item.id}
-            icon={item.icon}
-            label={item.label}
-            badge={getBadge(item.id)}
-            active={currentView === item.id}
-            collapsed={sidebarCollapsed}
-            onClick={() => setCurrentView(item.id)}
-          />
-        ))}
-
-        {!sidebarCollapsed && (
-          <>
-            <div style={{
-              padding: '16px 16px 6px', fontSize: 10, fontWeight: 700,
-              color: 'var(--text-muted)', textTransform: 'uppercase',
-              letterSpacing: '0.12em',
-            }}>
-              Filters
+      {/* Navigation */}
+      <nav style={{ flex: 1, padding: '4px 8px', overflowY: 'auto' }}>
+        {NAV_ITEMS.map(item => {
+          const isActive = currentView === item.key;
+          const count = item.key === 'todo' ? openCount : item.key === 'kanban' ? inProgressCount : undefined;
+          const Icon = item.icon;
+          return (
+            <div
+              key={item.key}
+              onClick={() => navTo(item.key)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '7px 10px', borderRadius: 6,
+                cursor: 'pointer',
+                background: isActive ? 'var(--bg-active)' : 'transparent',
+                color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+                fontSize: 13, fontWeight: isActive ? 500 : 400,
+                transition: 'all 0.1s',
+                marginBottom: 1,
+                position: 'relative',
+              }}
+              onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)'; }}
+              onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+            >
+              {isActive && <div style={{
+                position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)',
+                width: 3, height: 16, borderRadius: '0 3px 3px 0', background: 'var(--accent)',
+              }} />}
+              <Icon size={15} color={isActive ? 'var(--text-primary)' : 'var(--text-muted)'} />
+              <span style={{ flex: 1 }}>{item.label}</span>
+              {count !== undefined && count > 0 && (
+                <span style={{
+                  fontSize: 11, color: 'var(--text-muted)', fontWeight: 500,
+                  background: 'var(--bg-primary)', padding: '0 6px', borderRadius: 10,
+                  minWidth: 20, textAlign: 'center', lineHeight: '18px',
+                }}>{count}</span>
+              )}
             </div>
-            <NavItem icon="👤" label="My Tasks" collapsed={false} onClick={() => { setCurrentView('todo'); showToast(`📋 Showing tasks for ${activeUser ? activeUser.fname : 'User'}`, 'info'); }} />
-            <NavItem icon="📅" label="Due Today" collapsed={false} onClick={() => { setCurrentView('todo'); showToast('📅 Filtered by today', 'info'); }} />
-            <NavItem icon="🔴" label="Overdue" collapsed={false} onClick={() => { setCurrentView('todo'); showToast(`🔴 ${overdueCount} overdue tasks`, 'warning'); }} />
-            <NavItem icon="🚪" label="Sign Out" collapsed={false} onClick={logout} />
-          </>
-        )}
+          );
+        })}
+
+        {/* Divider */}
+        <div style={{ height: 1, background: 'var(--border)', margin: '10px 10px' }} />
+
+        {/* Quick Filters */}
+        <div style={{
+          fontSize: 10, fontWeight: 600, color: 'var(--text-muted)',
+          padding: '6px 10px 6px', letterSpacing: '0.06em',
+          textTransform: 'uppercase',
+        }}>Shortcuts</div>
+
+        {[
+          { icon: IconArrowRight, label: 'My Issues', action: () => { navTo('todo'); showToast('Filtered: My Issues', 'info'); } },
+          { icon: IconZap, label: 'Urgent', action: () => { navTo('todo'); showToast('Filtered: Urgent', 'info'); } },
+        ].map(f => (
+          <div
+            key={f.label}
+            onClick={f.action}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '6px 10px', borderRadius: 6,
+              cursor: 'pointer', color: 'var(--text-secondary)',
+              fontSize: 13, transition: 'background 0.1s', marginBottom: 1,
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+          >
+            <f.icon size={14} color="var(--text-muted)" />
+            <span>{f.label}</span>
+          </div>
+        ))}
       </nav>
 
-      {/* 3-Account Active Profile Switcher */}
+      {/* Account Section */}
       {activeUser && (
-        <div style={{ padding: 12, borderTop: '1px solid var(--border)' }}>
-          {!sidebarCollapsed && (
-            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6, paddingLeft: 4 }}>
-              Active Account (1 of 3)
-            </div>
-          )}
+        <div style={{ borderTop: '1px solid var(--border)', padding: '8px 8px', flexShrink: 0 }}>
+          {/* User Switcher */}
           <div style={{ position: 'relative' }}>
             <select
               value={activeUserId}
               onChange={e => switchUser(Number(e.target.value))}
               style={{
-                position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%', zIndex: 10,
+                position: 'absolute', inset: 0, opacity: 0,
+                cursor: 'pointer', width: '100%', zIndex: 10,
               }}
             >
               {users.map(u => (
-                <option key={u.id} value={u.id} style={{ background: '#0c0c1e', color: '#fff' }}>
+                <option key={u.id} value={u.id} style={{ background: '#141415', color: '#fff' }}>
                   {getUserName(u)} ({u.role})
                 </option>
               ))}
             </select>
-
             <div
               style={{
                 display: 'flex', alignItems: 'center', gap: 10,
-                padding: '10px 12px', borderRadius: 10, cursor: 'pointer',
-                background: 'var(--bg-tertiary)',
-                border: '1px solid var(--border)',
-                transition: 'all 0.2s',
+                padding: '8px 10px', borderRadius: 6, cursor: 'pointer',
+                transition: 'background 0.1s',
               }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-light)'; (e.currentTarget as HTMLElement).style.background = 'var(--bg-active)'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLElement).style.background = 'var(--bg-tertiary)'; }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
             >
-              <Avatar user={activeUser} size={30} fontSize={12} />
-              {!sidebarCollapsed && (
-                <div style={{ overflow: 'hidden', flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{getUserName(activeUser)}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <div style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--green)', boxShadow: '0 0 6px var(--green-glow)' }} />
-                    {activeUser.role.toUpperCase()} • Switch ▾
-                  </div>
+              <Avatar user={activeUser} size={24} fontSize={10} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {getUserName(activeUser)}
                 </div>
-              )}
+                <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>{activeUser.role}</div>
+              </div>
+              <IconChevronDown size={12} color="var(--text-muted)" />
             </div>
+          </div>
+
+          {/* Sign Out */}
+          <div
+            onClick={logout}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '6px 10px', borderRadius: 6,
+              cursor: 'pointer', color: 'var(--text-muted)',
+              fontSize: 12, transition: 'all 0.1s', marginTop: 2,
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)'; (e.currentTarget as HTMLElement).style.color = 'var(--red)'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
+          >
+            <IconLogout size={14} />
+            <span>Sign out</span>
           </div>
         </div>
       )}
-    </aside>
+    </>
   );
-}
 
-function NavItem({ icon, label, badge, active, collapsed, onClick }: {
-  icon: string; label: string; badge?: string;
-  active?: boolean; collapsed: boolean; onClick: () => void;
-}) {
+  // Mobile overlay
+  if (isMobile) {
+    return (
+      <>
+        {/* Mobile hamburger */}
+        <button
+          onClick={() => setMobileOpen(true)}
+          style={{
+            position: 'fixed', top: 10, left: 10, zIndex: 200,
+            width: 36, height: 36, borderRadius: 8,
+            background: 'var(--bg-secondary)', border: '1px solid var(--border)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', color: 'var(--text-secondary)',
+          }}
+        >
+          <IconMenu size={18} />
+        </button>
+
+        {/* Overlay */}
+        {mobileOpen && (
+          <div
+            onClick={() => setMobileOpen(false)}
+            style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+              zIndex: 300,
+            }}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{
+                width: 260, height: '100vh',
+                background: 'var(--bg-secondary)',
+                borderRight: '1px solid var(--border)',
+                display: 'flex', flexDirection: 'column',
+                animation: 'slideInLeft 0.2s ease-out',
+              }}
+            >
+              {sidebarContent}
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
+
+  // Desktop sidebar
   return (
-    <div
-      onClick={onClick}
-      title={collapsed ? label : undefined}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 10,
-        padding: '8px 14px', cursor: 'pointer',
-        borderRadius: 8, margin: '2px 8px',
-        fontSize: 13.5, fontWeight: active ? 600 : 400,
-        color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
-        background: active ? 'var(--accent-dim)' : 'transparent',
-        whiteSpace: 'nowrap', transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-        position: 'relative',
-        borderLeft: active ? '2px solid transparent' : '2px solid transparent',
-        ...(active ? {
-          borderImage: 'linear-gradient(180deg, var(--accent), var(--accent-hover)) 1',
-        } : {}),
-      }}
-      onMouseEnter={e => {
-        if (!active) {
-          (e.currentTarget as HTMLElement).style.background = 'var(--accent-subtle)';
-          (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)';
-        }
-      }}
-      onMouseLeave={e => {
-        if (!active) {
-          (e.currentTarget as HTMLElement).style.background = 'transparent';
-          (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)';
-        }
-      }}
-    >
-      <span style={{
-        width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 15, flexShrink: 0,
-        opacity: active ? 1 : 0.7,
-      }}>{icon}</span>
-      {!collapsed && <span style={{ flex: 1 }}>{label}</span>}
-      {!collapsed && badge && (
-        <span style={{
-          background: active
-            ? 'linear-gradient(135deg, var(--accent-dim), var(--accent-dim))'
-            : 'var(--bg-tertiary)',
-          color: active ? 'var(--accent)' : 'var(--text-muted)',
-          fontSize: 11, padding: '2px 8px', borderRadius: 10, fontWeight: 600,
-          border: active ? '1px solid var(--accent-dim)' : '1px solid var(--border)',
-        }}>{badge}</span>
-      )}
+    <div style={{
+      width: 230, flexShrink: 0,
+      background: 'var(--bg-secondary)',
+      borderRight: '1px solid var(--border)',
+      display: 'flex', flexDirection: 'column',
+      height: '100vh',
+      userSelect: 'none',
+    }}>
+      {sidebarContent}
     </div>
   );
 }
