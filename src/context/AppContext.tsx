@@ -24,7 +24,8 @@ interface AppContextType {
   switchUser: (id: number) => void;
 
   addTask: (t: Omit<Task, 'id' | 'createdAt'>) => Promise<void>;
-  updateTask: (id: number, data: Partial<Task>) => Promise<void>;
+  updateTask: (idOrTask: number | Task, data?: Partial<Task>) => Promise<void>;
+  updateTaskStatus: (id: number, status: Status) => Promise<void>;
   deleteTask: (id: number) => Promise<void>;
   toggleTask: (id: number) => Promise<void>;
 
@@ -280,23 +281,36 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     addActivity('create', activeUserId, createdId, 'created task');
   }, [activeUserId, addActivity]);
 
-  const updateTask = useCallback(async (id: number, data: Partial<Task>) => {
-    setTasks(prev => prev.map(t => t.id === id ? { ...t, ...data } : t));
+  const updateTask = useCallback(async (idOrTask: number | Task, data?: Partial<Task>) => {
+    let id: number;
+    let updateData: Partial<Task>;
+
+    if (typeof idOrTask === 'object' && idOrTask !== null) {
+      id = idOrTask.id;
+      updateData = idOrTask;
+    } else {
+      id = idOrTask;
+      updateData = data || {};
+    }
+
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updateData } : t));
 
     if (isSupabaseConfigured) {
       try {
         const payload: Record<string, any> = {};
-        if (data.title !== undefined) payload.title = data.title;
-        if (data.desc !== undefined) payload.desc = data.desc;
-        if (data.priority !== undefined) payload.priority = data.priority;
-        if (data.status !== undefined) payload.status = data.status;
-        if (data.tag !== undefined) payload.tag = data.tag;
-        if (data.quadrant !== undefined) payload.quadrant = data.quadrant;
-        if (data.due !== undefined) payload.due = data.due;
-        if (data.assignedTo !== undefined) payload.assigned_to = data.assignedTo;
-        if (data.completed !== undefined) payload.completed = data.completed;
+        if (updateData.title !== undefined) payload.title = updateData.title;
+        if (updateData.desc !== undefined) payload.desc = updateData.desc;
+        if (updateData.priority !== undefined) payload.priority = updateData.priority;
+        if (updateData.status !== undefined) payload.status = updateData.status;
+        if (updateData.tag !== undefined) payload.tag = updateData.tag;
+        if (updateData.quadrant !== undefined) payload.quadrant = updateData.quadrant;
+        if (updateData.due !== undefined) payload.due = updateData.due;
+        if (updateData.assignedTo !== undefined) payload.assigned_to = updateData.assignedTo;
+        if (updateData.completed !== undefined) payload.completed = updateData.completed;
 
-        await supabase.from('tasks').update(payload).eq('id', id);
+        if (Object.keys(payload).length > 0) {
+          await supabase.from('tasks').update(payload).eq('id', id);
+        }
       } catch (e) {
         console.error('Supabase task update failed:', e);
       }
@@ -304,6 +318,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     addActivity('update', activeUserId, id, 'updated task');
   }, [activeUserId, addActivity]);
+
+  const updateTaskStatus = useCallback(async (id: number, status: Status) => {
+    await updateTask(id, { status, completed: status === 'done' });
+  }, [updateTask]);
 
   const deleteTask = useCallback(async (id: number) => {
     setTasks(prev => prev.filter(t => t.id !== id));
@@ -364,7 +382,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       activeUserId, activeUser, isLoading,
       isAuthenticated, login, logout,
       setCurrentView, setSidebarCollapsed, switchUser,
-      addTask, updateTask, deleteTask, toggleTask,
+      addTask, updateTask, updateTaskStatus, deleteTask, toggleTask,
       addUser, removeUser,
       addActivity, clearActivities,
       showToast, removeToast,
