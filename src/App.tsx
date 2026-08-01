@@ -126,7 +126,7 @@ function AppInner() {
 
         {/* Content View */}
         <main style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          {currentView === 'dashboard' && <Dashboard />}
+          {currentView === 'dashboard' && <Dashboard onEdit={openEditTask} onAdd={openAddTask} />}
           {currentView === 'todo' && <TodoList onEdit={openEditTask} onAdd={openAddTask} />}
           {currentView === 'matrix' && <Matrix onEdit={openEditTask} onAdd={openAddTask} />}
           {currentView === 'kanban' && <Kanban onEdit={openEditTask} onAdd={openAddTask} />}

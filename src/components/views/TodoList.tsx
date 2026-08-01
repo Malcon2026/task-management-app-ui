@@ -4,10 +4,8 @@ import { Task, Priority, Quadrant } from '../../types';
 import { isOverdue, isToday, formatDate, getPriorityOrder } from '../../utils/helpers';
 import { Avatar } from '../ui/Avatar';
 import {
-  IconPlus, IconSearch, IconFilter, IconCheck, IconTrash, IconEdit,
-  IconChevronDown, IconChevronRight, IconClock, IconCalendar,
-  StatusDone, StatusInProgress, StatusReview, StatusTodo,
-  PriorityUrgent, PriorityHigh, PriorityMedium, PriorityLow,
+  IconPlus, IconSearch, IconCheck, IconTrash,
+  IconChevronDown, IconChevronRight, 
 } from '../ui/Icons';
 
 type TodoFilter = 'all' | 'today' | 'upcoming' | 'completed';
@@ -47,14 +45,14 @@ export function TodoList({ onEdit, onAdd }: TodoListProps) {
   const done = filtered.filter(t => t.completed);
 
   function quickAdd() {
-    if (!quickInput.trim()) { showToast('Please enter an issue title', 'error'); return; }
+    if (!quickInput.trim()) return;
     addTask({
       title: quickInput.trim(), desc: '',
       priority: quickPriority, status: 'todo', tag: 'work',
       quadrant: quickPriority === 'high' ? 'q1' : 'q2' as Quadrant,
       due: todayStr, assignedTo: 1, completed: false,
     });
-    showToast(`Issue "${quickInput.trim()}" created`, 'success');
+    showToast(`Task added`, 'success');
     setQuickInput('');
   }
 
@@ -69,62 +67,64 @@ export function TodoList({ onEdit, onAdd }: TodoListProps) {
 
   const openCount = tasks.filter(t => !t.completed).length;
   const completedCount = tasks.filter(t => t.completed).length;
-  const overdueCount = tasks.filter(t => !t.completed && isOverdue(t.due)).length;
 
   const TABS: { key: TodoFilter; label: string; count?: number }[] = [
-    { key: 'all', label: 'All Issues', count: openCount },
+    { key: 'all', label: 'Inbox', count: openCount },
     { key: 'today', label: 'Today', count: tasks.filter(t => !t.completed && isToday(t.due)).length },
     { key: 'upcoming', label: 'Upcoming', count: tasks.filter(t => !t.completed && !isOverdue(t.due) && !isToday(t.due)).length },
-    { key: 'completed', label: 'Done', count: completedCount },
+    { key: 'completed', label: 'Completed', count: completedCount },
   ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg-primary)' }}>
       {/* Header Bar */}
       <div style={{
-        display: 'flex', alignItems: 'center', padding: '0 20px',
+        display: 'flex', alignItems: 'center', padding: '0 24px',
         borderBottom: '1px solid var(--border)', gap: 0,
-        height: 44, flexShrink: 0, flexWrap: 'wrap',
+        height: 52, flexShrink: 0, flexWrap: 'wrap',
       }}>
         {TABS.map(tab => (
           <div
             key={tab.key}
             onClick={() => setFilter(tab.key)}
             style={{
-              padding: '0 12px', height: '100%', display: 'flex', alignItems: 'center', gap: 6,
-              fontSize: 13, cursor: 'pointer',
+              padding: '0 16px', height: '100%', display: 'flex', alignItems: 'center', gap: 6,
+              fontSize: 14, cursor: 'pointer',
               borderBottom: `2px solid ${filter === tab.key ? 'var(--accent)' : 'transparent'}`,
               color: filter === tab.key ? 'var(--text-primary)' : 'var(--text-muted)',
               fontWeight: filter === tab.key ? 500 : 400,
-              transition: 'all 0.1s',
+              transition: 'all 0.15s ease',
             }}
           >
             <span>{tab.label}</span>
             {tab.count !== undefined && tab.count > 0 && (
               <span style={{
-                fontSize: 11, color: filter === tab.key ? 'var(--text-primary)' : 'var(--text-muted)',
-                background: 'var(--bg-tertiary)', padding: '0 5px', borderRadius: 8,
+                fontSize: 11, color: filter === tab.key ? 'var(--accent)' : 'var(--text-muted)',
               }}>{tab.count}</span>
             )}
           </div>
         ))}
 
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
           {/* Search */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: 6,
-            background: 'var(--bg-primary)', border: '1px solid var(--border)',
-            borderRadius: 6, padding: '3px 8px', width: 150,
-          }}>
-            <IconSearch size={12} color="var(--text-muted)" />
+            background: 'var(--bg-secondary)', border: '1px solid transparent',
+            borderRadius: 6, padding: '4px 10px', width: 180,
+            transition: 'border-color 0.2s',
+          }}
+          onFocus={e => e.currentTarget.style.borderColor = 'var(--border-focus)'}
+          onBlur={e => e.currentTarget.style.borderColor = 'transparent'}
+          >
+            <IconSearch size={14} color="var(--text-muted)" />
             <input
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Filter issues..."
+              placeholder="Search tasks..."
               style={{
                 background: 'none', border: 'none', outline: 'none',
-                color: 'var(--text-primary)', fontSize: 12, width: '100%',
+                color: 'var(--text-primary)', fontSize: 13, width: '100%',
               }}
             />
           </div>
@@ -134,155 +134,120 @@ export function TodoList({ onEdit, onAdd }: TodoListProps) {
             value={sortBy}
             onChange={e => setSortBy(e.target.value as SortBy)}
             style={{
-              padding: '4px 8px', background: 'var(--bg-primary)',
-              border: '1px solid var(--border)', borderRadius: 6,
-              color: 'var(--text-secondary)', fontSize: 12, outline: 'none',
+              padding: '5px 10px', background: 'var(--bg-secondary)',
+              border: '1px solid transparent', borderRadius: 6,
+              color: 'var(--text-primary)', fontSize: 13, outline: 'none',
+              cursor: 'pointer',
             }}
           >
-            <option value="date">Sort by Date</option>
-            <option value="priority">Sort by Priority</option>
-            <option value="name">Sort by Title</option>
+            <option value="date">Date</option>
+            <option value="priority">Priority</option>
+            <option value="name">Name</option>
           </select>
-
-          {/* Create Button */}
-          <button
-            onClick={onAdd}
-            style={{
-              padding: '4px 10px', borderRadius: 6,
-              background: 'var(--accent)', color: '#fff', border: 'none',
-              fontSize: 12, fontWeight: 500, cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: 4,
-            }}
-          >
-            <IconPlus size={13} />
-            <span>New Issue</span>
-          </button>
         </div>
       </div>
 
-      {/* Quick Input Bar */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 10,
-        padding: '8px 20px', borderBottom: '1px solid var(--border)',
-        background: 'var(--bg-secondary)',
-      }}>
-        <StatusTodo size={14} />
-        <input
-          type="text"
-          value={quickInput}
-          onChange={e => setQuickInput(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && quickAdd()}
-          placeholder="Create new issue... (Press Enter)"
-          style={{
-            flex: 1, background: 'none', border: 'none', outline: 'none',
-            color: 'var(--text-primary)', fontSize: 13, fontFamily: 'inherit',
-          }}
-        />
-        <button
-          onClick={() => {
-            const p: Priority[] = ['low', 'medium', 'high'];
-            setQuickPriority(p[(p.indexOf(quickPriority) + 1) % 3]);
-          }}
-          style={{
-            padding: '2px 8px', borderRadius: 4,
-            border: '1px solid var(--border)', background: 'var(--bg-tertiary)',
-            color: 'var(--text-secondary)', fontSize: 11, cursor: 'pointer',
-            textTransform: 'uppercase', fontWeight: 500,
-          }}
-        >{quickPriority}</button>
-        <button
-          onClick={quickAdd}
-          style={{
-            padding: '3px 10px', borderRadius: 5,
-            background: quickInput.trim() ? 'var(--accent)' : 'var(--bg-tertiary)',
-            color: quickInput.trim() ? '#fff' : 'var(--text-muted)',
-            border: 'none', fontSize: 12, fontWeight: 500, cursor: 'pointer',
-          }}
-        >Add</button>
-      </div>
-
-      {/* Table Content */}
-      <div style={{ flex: 1, overflowY: 'auto' }}>
-        {overdueItems.length > 0 && (
-          <IssueGroup
-            title="Overdue"
-            count={overdueItems.length}
-            isAlert
-            collapsed={!!collapsed['overdue']}
-            onToggle={() => toggleSection('overdue')}
-          >
-            {overdueItems.map(t => (
-              <IssueRow key={t.id} task={t} users={users} onEdit={onEdit} onToggle={toggleTask} onDelete={deleteTask} />
-            ))}
-          </IssueGroup>
-        )}
-
-        {todayItems.length > 0 && (
-          <IssueGroup
-            title="Today"
-            count={todayItems.length}
-            collapsed={!!collapsed['today']}
-            onToggle={() => toggleSection('today')}
-          >
-            {todayItems.map(t => (
-              <IssueRow key={t.id} task={t} users={users} onEdit={onEdit} onToggle={toggleTask} onDelete={deleteTask} />
-            ))}
-          </IssueGroup>
-        )}
-
-        {upcomingItems.length > 0 && (
-          <IssueGroup
-            title="Upcoming"
-            count={upcomingItems.length}
-            collapsed={!!collapsed['upcoming']}
-            onToggle={() => toggleSection('upcoming')}
-          >
-            {upcomingItems.map(t => (
-              <IssueRow key={t.id} task={t} users={users} onEdit={onEdit} onToggle={toggleTask} onDelete={deleteTask} />
-            ))}
-          </IssueGroup>
-        )}
-
-        {completedItems.length > 0 && (
-          <IssueGroup
-            title="Completed"
-            count={completedItems.length}
-            collapsed={!!collapsed['completed']}
-            onToggle={() => toggleSection('completed')}
-          >
-            {completedItems.map(t => (
-              <IssueRow key={t.id} task={t} users={users} onEdit={onEdit} onToggle={toggleTask} onDelete={deleteTask} />
-            ))}
-          </IssueGroup>
-        )}
-
-        {filtered.length === 0 && (
-          <div style={{ padding: '48px 20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-            No issues match the selected view
+      {/* Content Area */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '24px 0' }}>
+        <div style={{ maxWidth: 800, margin: '0 auto', padding: '0 24px' }}>
+          
+          <div style={{ fontSize: 24, fontWeight: 700, marginBottom: 24, color: 'var(--text-primary)' }}>
+            {TABS.find(t => t.key === filter)?.label}
           </div>
-        )}
+
+          {/* Quick Add Inline */}
+          <div className="todoist-row" style={{ borderBottom: 'none', padding: '8px 0', marginBottom: 16 }}>
+            <div style={{ width: 16, display: 'flex', justifyContent: 'center' }}>
+              <IconPlus size={16} color="var(--accent)" />
+            </div>
+            <input
+              type="text"
+              value={quickInput}
+              onChange={e => setQuickInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && quickAdd()}
+              placeholder="Add task... (Press Enter)"
+              style={{
+                flex: 1, background: 'none', border: 'none', outline: 'none',
+                color: 'var(--text-primary)', fontSize: 14, fontFamily: 'inherit',
+              }}
+            />
+            {quickInput.trim() && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button
+                  onClick={() => {
+                    const p: Priority[] = ['low', 'medium', 'high', 'urgent'];
+                    setQuickPriority(p[(p.indexOf(quickPriority) + 1) % 4]);
+                  }}
+                  style={{
+                    padding: '2px 8px', borderRadius: 4,
+                    border: '1px solid var(--border)', background: 'var(--bg-secondary)',
+                    color: 'var(--text-secondary)', fontSize: 11, cursor: 'pointer',
+                    textTransform: 'uppercase', fontWeight: 500,
+                  }}
+                >{quickPriority}</button>
+                <button
+                  onClick={quickAdd}
+                  style={{
+                    padding: '4px 12px', borderRadius: 6,
+                    background: 'var(--accent)', color: '#fff',
+                    border: 'none', fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                  }}
+                >Add Task</button>
+              </div>
+            )}
+          </div>
+
+          {/* Task Lists */}
+          {overdueItems.length > 0 && (
+            <IssueGroup title="Overdue" collapsed={!!collapsed['overdue']} onToggle={() => toggleSection('overdue')} isAlert>
+              {overdueItems.map(t => <IssueRow key={t.id} task={t} users={users} onEdit={onEdit} onToggle={toggleTask} onDelete={deleteTask} />)}
+            </IssueGroup>
+          )}
+
+          {todayItems.length > 0 && (
+            <IssueGroup title="Today" collapsed={!!collapsed['today']} onToggle={() => toggleSection('today')}>
+              {todayItems.map(t => <IssueRow key={t.id} task={t} users={users} onEdit={onEdit} onToggle={toggleTask} onDelete={deleteTask} />)}
+            </IssueGroup>
+          )}
+
+          {upcomingItems.length > 0 && (
+            <IssueGroup title="Upcoming" collapsed={!!collapsed['upcoming']} onToggle={() => toggleSection('upcoming')}>
+              {upcomingItems.map(t => <IssueRow key={t.id} task={t} users={users} onEdit={onEdit} onToggle={toggleTask} onDelete={deleteTask} />)}
+            </IssueGroup>
+          )}
+
+          {completedItems.length > 0 && (
+            <IssueGroup title="Completed" collapsed={!!collapsed['completed']} onToggle={() => toggleSection('completed')}>
+              {completedItems.map(t => <IssueRow key={t.id} task={t} users={users} onEdit={onEdit} onToggle={toggleTask} onDelete={deleteTask} />)}
+            </IssueGroup>
+          )}
+
+          {filtered.length === 0 && (
+            <div style={{ padding: '48px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
+              What do you need to get done today?
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-function IssueGroup({ title, count, isAlert, collapsed, onToggle, children }: {
-  title: string; count: number; isAlert?: boolean; collapsed: boolean; onToggle: () => void; children: React.ReactNode;
+function IssueGroup({ title, collapsed, onToggle, isAlert, children }: {
+  title: string; collapsed: boolean; onToggle: () => void; isAlert?: boolean; children: React.ReactNode;
 }) {
   return (
-    <div>
+    <div style={{ marginBottom: 24 }}>
       <div
         onClick={onToggle}
         style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          padding: '8px 20px', background: 'var(--bg-secondary)',
-          borderBottom: '1px solid var(--border)', cursor: 'pointer',
-          userSelect: 'none',
+          display: 'flex', alignItems: 'center', gap: 6,
+          padding: '8px 0', borderBottom: '1px solid var(--border)',
+          cursor: 'pointer', userSelect: 'none', marginBottom: 8,
         }}
       >
-        {collapsed ? <IconChevronRight size={12} color="var(--text-muted)" /> : <IconChevronDown size={12} color="var(--text-muted)" />}
-        <span style={{ fontSize: 12, fontWeight: 600, color: isAlert ? 'var(--red)' : 'var(--text-primary)' }}>{title}</span>
-        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>({count})</span>
+        <span style={{ fontSize: 14, fontWeight: 600, color: isAlert ? 'var(--red)' : 'var(--text-primary)' }}>{title}</span>
+        {collapsed ? <IconChevronRight size={14} color="var(--text-muted)" /> : <IconChevronDown size={14} color="var(--text-muted)" />}
       </div>
       {!collapsed && <div>{children}</div>}
     </div>
@@ -293,69 +258,73 @@ function IssueRow({ task, users, onEdit, onToggle, onDelete }: {
   task: Task; users: any[]; onEdit: (t: Task) => void; onToggle: (id: number) => void; onDelete: (id: number) => void;
 }) {
   const user = users.find(u => u.id === task.assignedTo);
-  const StatusIcon = task.completed ? StatusDone : task.status === 'inprogress' ? StatusInProgress : task.status === 'review' ? StatusReview : StatusTodo;
-  const PriorityIcon = task.priority === 'urgent' ? PriorityUrgent : task.priority === 'high' ? PriorityHigh : task.priority === 'medium' ? PriorityMedium : PriorityLow;
-
+  
   return (
     <div
       onClick={() => onEdit(task)}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 12,
-        padding: '8px 20px', borderBottom: '1px solid var(--border)',
-        cursor: 'pointer', fontSize: 13, transition: 'background 0.08s',
+      className="todoist-row"
+      onMouseEnter={e => {
+        const btn = e.currentTarget.querySelector('.row-delete-btn') as HTMLElement;
+        if (btn) btn.style.opacity = '1';
       }}
-      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)'; }}
-      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+      onMouseLeave={e => {
+        const btn = e.currentTarget.querySelector('.row-delete-btn') as HTMLElement;
+        if (btn) btn.style.opacity = '0';
+      }}
     >
-      {/* Priority Bar */}
-      <div title={`Priority: ${task.priority}`}>
-        <PriorityIcon size={14} />
+      {/* Checkbox */}
+      <div 
+        className={`todoist-checkbox ${task.completed ? 'checked' : ''}`}
+        onClick={e => { e.stopPropagation(); onToggle(task.id); }}
+        style={{
+          borderColor: task.completed ? 'var(--accent)' : task.priority === 'urgent' ? 'var(--red)' : task.priority === 'high' ? 'var(--orange)' : task.priority === 'medium' ? 'var(--yellow)' : 'var(--text-muted)'
+        }}
+      >
+        {task.completed && <IconCheck size={10} color="#fff" />}
+      </div>
+      
+      {/* Content */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <span style={{
+          color: task.completed ? 'var(--text-muted)' : 'var(--text-primary)',
+          textDecoration: task.completed ? 'line-through' : 'none',
+          fontSize: 14,
+        }}>{task.title}</span>
+        
+        {/* Meta row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {task.due && (
+            <span style={{
+              fontSize: 12, color: isOverdue(task.due) && !task.completed ? 'var(--red)' : 'var(--text-muted)',
+              display: 'flex', alignItems: 'center', gap: 4
+            }}>
+              {formatDate(task.due)}
+            </span>
+          )}
+          <span style={{
+            fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.02em',
+          }}>#{task.tag}</span>
+        </div>
       </div>
 
-      {/* Status Toggle */}
-      <button
-        onClick={e => { e.stopPropagation(); onToggle(task.id); }}
-        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}
-      >
-        <StatusIcon size={14} />
-      </button>
-
-      {/* Tag */}
-      <span className={`todo-tag tag-${task.tag}`} style={{
-        fontSize: 10, padding: '1px 6px', borderRadius: 4, fontWeight: 500,
-        textTransform: 'uppercase', letterSpacing: '0.02em', flexShrink: 0,
-      }}>{task.tag}</span>
-
-      {/* Title */}
-      <span style={{
-        flex: 1, color: task.completed ? 'var(--text-muted)' : 'var(--text-primary)',
-        textDecoration: task.completed ? 'line-through' : 'none',
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-      }}>{task.title}</span>
-
-      {/* Assignee */}
-      {user && <Avatar user={user} size={20} fontSize={9} />}
-
-      {/* Due Date */}
-      {task.due && (
-        <span style={{
-          fontSize: 11, color: isOverdue(task.due) && !task.completed ? 'var(--red)' : 'var(--text-muted)',
-          flexShrink: 0,
-        }}>{formatDate(task.due)}</span>
-      )}
-
-      {/* Delete button */}
-      <button
-        onClick={e => { e.stopPropagation(); onDelete(task.id); }}
-        style={{
-          background: 'none', border: 'none', color: 'var(--text-muted)',
-          cursor: 'pointer', opacity: 0.6, padding: 2,
-        }}
-        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--red)'; (e.currentTarget as HTMLElement).style.opacity = '1'; }}
-        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = '0.6'; (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
-      >
-        <IconTrash size={13} />
-      </button>
+      {/* Right side actions & assignee */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        {user && <Avatar user={user} size={24} fontSize={10} />}
+        
+        <button
+          onClick={e => { e.stopPropagation(); onDelete(task.id); }}
+          className="row-delete-btn"
+          style={{
+            background: 'none', border: 'none', color: 'var(--text-muted)',
+            cursor: 'pointer', opacity: 0, padding: 4, transition: 'opacity 0.15s',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--red)'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; }}
+        >
+          <IconTrash size={14} />
+        </button>
+      </div>
     </div>
   );
 }

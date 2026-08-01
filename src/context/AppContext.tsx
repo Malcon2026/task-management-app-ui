@@ -46,6 +46,19 @@ interface AppContextType {
   nextActivityId: React.MutableRefObject<number>;
 }
 
+function isTaskEqual(a: Task, b: Task) {
+  return a.id === b.id && a.title === b.title && a.desc === b.desc &&
+    a.priority === b.priority && a.status === b.status && a.tag === b.tag &&
+    a.quadrant === b.quadrant && a.due === b.due && a.assignedTo === b.assignedTo &&
+    a.completed === b.completed && a.createdAt === b.createdAt;
+}
+
+function isActivityEqual(a: Activity, b: Activity) {
+  return a.id === b.id && a.type === b.type && a.userId === b.userId &&
+    a.taskId === b.taskId && a.text === b.text && a.targetUserId === b.targetUserId &&
+    a.time === b.time;
+}
+
 const AppContext = createContext<AppContextType | null>(null);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
@@ -187,19 +200,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, async () => {
         const { data } = await supabase.from('tasks').select('*').order('created_at', { ascending: false });
         if (data) {
-          setTasks(data.map(t => ({
-            id: Number(t.id),
-            title: t.title,
-            desc: t.desc || '',
-            priority: t.priority,
-            status: t.status,
-            tag: t.tag,
-            quadrant: t.quadrant,
-            due: t.due || '',
-            assignedTo: Number(t.assigned_to) || 1,
-            completed: Boolean(t.completed),
-            createdAt: t.created_at ? new Date(t.created_at).getTime() : Date.now(),
-          })));
+          setTasks(prev => {
+            return data.map(t => {
+              const n: Task = {
+                id: Number(t.id),
+                title: t.title,
+                desc: t.desc || '',
+                priority: t.priority,
+                status: t.status,
+                tag: t.tag,
+                quadrant: t.quadrant,
+                due: t.due || '',
+                assignedTo: Number(t.assigned_to) || 1,
+                completed: Boolean(t.completed),
+                createdAt: t.created_at ? new Date(t.created_at).getTime() : Date.now(),
+              };
+              const p = prev.find(pt => pt.id === n.id);
+              if (p && isTaskEqual(p, n)) return p;
+              return n;
+            });
+          });
         }
       })
       .subscribe();
@@ -208,15 +228,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'activities' }, async () => {
         const { data } = await supabase.from('activities').select('*').order('created_at', { ascending: false }).limit(100);
         if (data) {
-          setActivities(data.map(a => ({
-            id: Number(a.id),
-            type: a.type,
-            userId: Number(a.user_id),
-            taskId: a.task_id ? Number(a.task_id) : null,
-            text: a.text,
-            targetUserId: a.target_user_id ? Number(a.target_user_id) : null,
-            time: a.created_at ? new Date(a.created_at).getTime() : Date.now(),
-          })));
+          setActivities(prev => {
+            return data.map(a => {
+              const n: Activity = {
+                id: Number(a.id),
+                type: a.type,
+                userId: Number(a.user_id),
+                taskId: a.task_id ? Number(a.task_id) : null,
+                text: a.text,
+                targetUserId: a.target_user_id ? Number(a.target_user_id) : null,
+                time: a.created_at ? new Date(a.created_at).getTime() : Date.now(),
+              };
+              const p = prev.find(pa => pa.id === n.id);
+              if (p && isActivityEqual(p, n)) return p;
+              return n;
+            });
+          });
         }
       })
       .subscribe();

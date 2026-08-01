@@ -340,3 +340,125 @@ input:focus, select:focus, textarea:focus {
   }
 }
 
+/* ========== TODOIST ========== */
+.todoist-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.todoist-row:last-child {
+  border-bottom: none;
+}
+.todoist-row:hover {
+  background: var(--bg-hover);
+}
+.todoist-checkbox {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: transparent;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.todoist-checkbox:hover {
+  background: rgba(255,255,255,0.05);
+  border-color: var(--text-primary);
+}
+.todoist-checkbox.checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+/* ========== TIMELINE ========== */
+.timeline-container {
+  position: relative;
+  padding-left: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.timeline-line {
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 16px;
+  width: 1px;
+  background: var(--border);
+  z-index: 0;
+}
+.timeline-item {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 16px;
+}
+.timeline-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--bg-primary);
+  border: 2px solid var(--border);
+  flex-shrink: 0;
+  margin-top: 5px;
+  z-index: 2;
+  box-shadow: 0 0 0 4px var(--bg-primary);
+}
+.timeline-content {
+  flex: 1;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ========== DASHBOARD & PIE CHART ========== */
+.dashboard-layout {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  padding: 24px 32px;
+  gap: 24px;
+  min-height: 0;
+}
+
+@media (max-width: 900px) {
+  .dashboard-layout {
+    flex-direction: column;
+    padding: 16px;
+  }
+}
+
+.pie-chart {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 4px solid var(--bg-primary);
+  box-shadow: 0 0 0 1px var(--border);
+  position: relative;
+}
+/* Inner hole to make it a donut chart (looks cleaner than full pie) */
+.pie-chart::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 60px;
+  height: 60px;
+  background: var(--bg-secondary);
+  border-radius: 50%;
+  border: 1px solid var(--border);
+}

@@ -1,8 +1,9 @@
-import { useState, useMemo, useCallback, useRef, memo } from 'react';
+import { useState, useMemo, useCallback, memo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Task, Status, User } from '../../types';
 import { isOverdue, formatDate } from '../../utils/helpers';
 import { Avatar } from '../ui/Avatar';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import {
   IconPlus, IconTrash, IconChevronDown,
   StatusTodo, StatusInProgress, StatusReview, StatusDone,
@@ -27,8 +28,6 @@ interface KanbanCardProps {
   isMenuOpen: boolean;
   onEdit: (task: Task) => void;
   onDelete: (id: number) => void;
-  onDragStart: (e: React.DragEvent, id: number) => void;
-  onDragEnd: (e: React.DragEvent) => void;
   onToggleMenu: (id: number) => void;
   onMoveClick: (id: number, status: Status) => void;
 }
@@ -39,8 +38,6 @@ const KanbanCard = memo(function KanbanCard({
   isMenuOpen,
   onEdit,
   onDelete,
-  onDragStart,
-  onDragEnd,
   onToggleMenu,
   onMoveClick,
 }: KanbanCardProps) {
@@ -48,27 +45,22 @@ const KanbanCard = memo(function KanbanCard({
 
   return (
     <div
-      draggable
-      onDragStart={e => onDragStart(e, task.id)}
-      onDragEnd={onDragEnd}
       onClick={() => onEdit(task)}
-      className="kanban-card"
       style={{
         background: 'var(--bg-secondary)',
         border: '1px solid var(--border)',
         borderRadius: 8, padding: '12px 14px',
-        cursor: 'grab', display: 'flex', flexDirection: 'column', gap: 10,
+        display: 'flex', flexDirection: 'column', gap: 10,
         position: 'relative',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
       }}
     >
-      {/* Top row: tag & 1-click status switcher menu */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span className={`todo-tag tag-${task.tag}`} style={{
           fontSize: 10, padding: '2px 6px', borderRadius: 4,
           fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.02em',
         }}>{task.tag}</span>
 
-        {/* Priority Icon & Move Dropdown Trigger */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <PriorityIcon size={13} />
           <div style={{ position: 'relative' }}>
@@ -87,7 +79,6 @@ const KanbanCard = memo(function KanbanCard({
               <IconChevronDown size={10} />
             </button>
 
-            {/* 1-Click Move Menu */}
             {isMenuOpen && (
               <div
                 onClick={e => e.stopPropagation()}
@@ -103,6 +94,12 @@ const KanbanCard = memo(function KanbanCard({
                     key={c.key}
                     onClick={() => onMoveClick(task.id, c.key)}
                     className="kanban-menu-item"
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px',
+                      cursor: 'pointer', fontSize: 12, color: 'var(--text-primary)', borderRadius: 4,
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
                     <div style={{ width: 6, height: 6, borderRadius: '50%', background: c.color }} />
                     <span>{c.label}</span>
@@ -114,7 +111,6 @@ const KanbanCard = memo(function KanbanCard({
         </div>
       </div>
 
-      {/* Task Title */}
       <div style={{
         fontSize: 13, fontWeight: 500, color: 'var(--text-primary)',
         lineHeight: 1.4, textDecoration: task.completed ? 'line-through' : 'none',
@@ -122,7 +118,6 @@ const KanbanCard = memo(function KanbanCard({
         {task.title}
       </div>
 
-      {/* Footer Row: Due Date & Assignee */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         borderTop: '1px solid var(--border)', paddingTop: 8, marginTop: 2,
@@ -137,6 +132,12 @@ const KanbanCard = memo(function KanbanCard({
           <button
             onClick={e => { e.stopPropagation(); onDelete(task.id); }}
             className="kanban-delete-btn"
+            style={{
+              background: 'none', border: 'none', color: 'var(--text-muted)',
+              cursor: 'pointer', padding: 2, display: 'flex',
+            }}
+            onMouseEnter={e => e.currentTarget.style.color = 'var(--red)'}
+            onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
             title="Delete Task"
           >
             <IconTrash size={12} />
@@ -148,11 +149,9 @@ const KanbanCard = memo(function KanbanCard({
 });
 
 export function Kanban({ onEdit, onAdd }: KanbanProps) {
-  const { tasks, users, updateTaskStatus, deleteTask, showToast } = useApp();
+  const { tasks, users, updateTaskStatus, deleteTask } = useApp();
   const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
-  const draggedTaskIdRef = useRef<number | null>(null);
 
-  // Group tasks by status efficiently using useMemo
   const tasksByStatus = useMemo(() => {
     const map: Record<Status, Task[]> = {
       todo: [],
@@ -168,68 +167,24 @@ export function Kanban({ onEdit, onAdd }: KanbanProps) {
     return map;
   }, [tasks]);
 
-  // Quick user map lookup
   const usersById = useMemo(() => {
     const map = new Map<number, User>();
     users.forEach(u => map.set(u.id, u));
     return map;
   }, [users]);
 
-  // Zero-rerender Drag & Drop Handlers
-  const handleDragStart = useCallback((e: React.DragEvent, id: number) => {
-    e.dataTransfer.setData('text/plain', id.toString());
-    e.dataTransfer.effectAllowed = 'move';
-    draggedTaskIdRef.current = id;
-    const target = e.currentTarget as HTMLElement;
-    target.classList.add('is-dragging');
-  }, []);
+  const onDragEnd = useCallback((result: DropResult) => {
+    const { destination, source, draggableId } = result;
 
-  const handleDragEnd = useCallback((e: React.DragEvent) => {
-    const target = e.currentTarget as HTMLElement;
-    target.classList.remove('is-dragging');
-    draggedTaskIdRef.current = null;
-    document.querySelectorAll('.kanban-col').forEach(el => el.classList.remove('col-drag-over'));
-  }, []);
+    if (!destination) return;
+    if (destination.droppableId === source.droppableId && destination.index === source.index) return;
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  }, []);
-
-  const handleDragEnter = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    const colEl = (e.currentTarget as HTMLElement).closest('.kanban-col');
-    if (colEl) {
-      colEl.classList.add('col-drag-over');
-    }
-  }, []);
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    const colEl = (e.currentTarget as HTMLElement).closest('.kanban-col');
-    if (colEl && !colEl.contains(e.relatedTarget as Node)) {
-      colEl.classList.remove('col-drag-over');
-    }
-  }, []);
-
-  const handleDrop = useCallback((e: React.DragEvent, status: Status) => {
-    e.preventDefault();
-    const colEl = (e.currentTarget as HTMLElement).closest('.kanban-col');
-    if (colEl) {
-      colEl.classList.remove('col-drag-over');
-    }
-
-    const idStr = e.dataTransfer.getData('text/plain');
-    const id = idStr ? parseInt(idStr, 10) : draggedTaskIdRef.current;
-
-    if (id !== null && !isNaN(id)) {
-      const task = tasks.find(t => t.id === id);
-      if (task && task.status !== status) {
-        updateTaskStatus(id, status);
-      }
-    }
-    draggedTaskIdRef.current = null;
-    document.querySelectorAll('.kanban-col').forEach(el => el.classList.remove('col-drag-over'));
-  }, [tasks, updateTaskStatus]);
+    const taskId = parseInt(draggableId, 10);
+    const newStatus = destination.droppableId as Status;
+    
+    // Optimistic update happens natively through our fast context
+    updateTaskStatus(taskId, newStatus);
+  }, [updateTaskStatus]);
 
   const handleMoveClick = useCallback((taskId: number, newStatus: Status) => {
     updateTaskStatus(taskId, newStatus);
@@ -245,89 +200,112 @@ export function Kanban({ onEdit, onAdd }: KanbanProps) {
   }, [deleteTask]);
 
   return (
-    <div
-      onClick={() => setActiveMenuId(null)}
-      style={{
-        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-        gap: 16, padding: 20, height: '100%', overflowX: 'auto',
-      }}
-    >
-      {COLUMNS.map(col => {
-        const colTasks = tasksByStatus[col.key] || [];
+    <DragDropContext onDragEnd={onDragEnd}>
+      <div
+        onClick={() => setActiveMenuId(null)}
+        style={{
+          display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: 16, padding: 20, height: '100%', overflowX: 'auto',
+          alignItems: 'start',
+        }}
+      >
+        {COLUMNS.map(col => {
+          const colTasks = tasksByStatus[col.key] || [];
 
-        return (
-          <div
-            key={col.key}
-            className="kanban-col"
-            onDragOver={handleDragOver}
-            onDragEnter={handleDragEnter}
-            onDragLeave={handleDragLeave}
-            onDrop={e => handleDrop(e, col.key)}
-            style={{
-              background: col.bg,
-              border: '1.5px solid var(--border)',
-              borderRadius: 10, display: 'flex', flexDirection: 'column',
-              height: '100%', overflow: 'hidden',
-            }}
-          >
-            {/* Column Header */}
-            <div style={{
-              padding: '12px 16px', borderBottom: '1px solid var(--border)',
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              background: 'var(--bg-secondary)',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{
-                  width: 8, height: 8, borderRadius: '50%', background: col.color,
-                }} />
-                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{col.label}</span>
-                <span style={{
-                  fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg-primary)',
-                  padding: '2px 8px', borderRadius: 10, fontWeight: 600,
-                  border: '1px solid var(--border)',
-                }}>{colTasks.length}</span>
-              </div>
-              <button
-                onClick={onAdd}
-                className="kanban-action-btn"
-                title="Add Task"
-              >
-                <IconPlus size={14} />
-              </button>
-            </div>
-
-            {/* Column Task List */}
-            <div style={{
-              flex: 1, overflowY: 'auto', padding: 12,
-              display: 'flex', flexDirection: 'column', gap: 10,
-            }}>
-              {colTasks.map(t => (
-                <KanbanCard
-                  key={t.id}
-                  task={t}
-                  user={usersById.get(t.assignedTo)}
-                  isMenuOpen={activeMenuId === t.id}
-                  onEdit={onEdit}
-                  onDelete={handleDeleteTask}
-                  onDragStart={handleDragStart}
-                  onDragEnd={handleDragEnd}
-                  onToggleMenu={handleToggleMenu}
-                  onMoveClick={handleMoveClick}
-                />
-              ))}
-
-              {colTasks.length === 0 && (
-                <div style={{
-                  padding: '32px 16px', textAlign: 'center', color: 'var(--text-muted)',
-                  fontSize: 12, border: '1px dashed var(--border)', borderRadius: 8,
-                }}>
-                  Drop tasks here or click +
+          return (
+            <div
+              key={col.key}
+              style={{
+                background: col.bg,
+                border: '1.5px solid var(--border)',
+                borderRadius: 10, display: 'flex', flexDirection: 'column',
+                height: '100%', overflow: 'hidden', minHeight: 400,
+              }}
+            >
+              <div style={{
+                padding: '12px 16px', borderBottom: '1px solid var(--border)',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                background: 'var(--bg-secondary)', flexShrink: 0,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: col.color }} />
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{col.label}</span>
+                  <span style={{
+                    fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg-primary)',
+                    padding: '2px 8px', borderRadius: 10, fontWeight: 600,
+                    border: '1px solid var(--border)',
+                  }}>{colTasks.length}</span>
                 </div>
-              )}
+                <button
+                  onClick={onAdd}
+                  style={{
+                    background: 'transparent', border: 'none', color: 'var(--text-muted)',
+                    cursor: 'pointer', padding: 2, display: 'flex',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.color = 'var(--text-primary)'}
+                  onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
+                >
+                  <IconPlus size={14} />
+                </button>
+              </div>
+
+              <Droppable droppableId={col.key}>
+                {(provided, snapshot) => (
+                  <div
+                    ref={provided.innerRef}
+                    {...provided.droppableProps}
+                    style={{
+                      flex: 1, padding: 12,
+                      display: 'flex', flexDirection: 'column', gap: 10,
+                      background: snapshot.isDraggingOver ? 'rgba(255,255,255,0.02)' : 'transparent',
+                      transition: 'background 0.2s ease',
+                      minHeight: 100, overflowY: 'auto',
+                    }}
+                  >
+                    {colTasks.map((t, index) => (
+                      <Draggable key={t.id} draggableId={t.id.toString()} index={index}>
+                        {(provided, snapshot) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            {...provided.dragHandleProps}
+                            style={{
+                              ...provided.draggableProps.style,
+                              opacity: snapshot.isDragging ? 0.9 : 1,
+                              transform: provided.draggableProps.style?.transform,
+                              cursor: snapshot.isDragging ? 'grabbing' : 'grab',
+                            }}
+                          >
+                            <KanbanCard
+                              task={t}
+                              user={usersById.get(t.assignedTo)}
+                              isMenuOpen={activeMenuId === t.id}
+                              onEdit={onEdit}
+                              onDelete={handleDeleteTask}
+                              onToggleMenu={handleToggleMenu}
+                              onMoveClick={handleMoveClick}
+                            />
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
+
+                    {colTasks.length === 0 && !snapshot.isDraggingOver && (
+                      <div style={{
+                        padding: '32px 16px', textAlign: 'center', color: 'var(--text-muted)',
+                        fontSize: 12, border: '1px dashed var(--border)', borderRadius: 8,
+                      }}>
+                        Drop tasks here or click +
+                      </div>
+                    )}
+                  </div>
+                )}
+              </Droppable>
             </div>
-          </div>
-        );
-      })}
-    </div>
+          );
+        })}
+      </div>
+    </DragDropContext>
   );
 }

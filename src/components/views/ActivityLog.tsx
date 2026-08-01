@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Avatar } from '../ui/Avatar';
 import { timeAgo, getUserName } from '../../utils/helpers';
-import { IconSearch, IconTrash, IconActivity, IconCheck, IconPlus } from '../ui/Icons';
+import { IconSearch, IconTrash, IconActivity } from '../ui/Icons';
 import type { ActivityType } from '../../types';
 
 const TYPE_CONFIG: Record<ActivityType, { label: string; color: string; bg: string }> = {
@@ -136,63 +136,45 @@ export function ActivityLog() {
       </div>
 
       {/* Timeline Stream */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '12px 20px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '24px 32px' }}>
         {filtered.length === 0 && (
           <div style={{ padding: '48px 20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
             No activity events recorded
           </div>
         )}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {filtered.map(act => {
-            const user = users.find(u => u.id === act.userId);
-            const task = tasks.find(t => t.id === act.taskId);
-            const targetUser = act.targetUserId ? users.find(u => u.id === act.targetUserId) : null;
-            const config = TYPE_CONFIG[act.type] || TYPE_CONFIG.comment;
-            if (!user) return null;
+        
+        {filtered.length > 0 && (
+          <div className="timeline-container animate-fadeInUp">
+            <div className="timeline-line"></div>
+            {filtered.map(act => {
+              const user = users.find(u => u.id === act.userId);
+              const task = tasks.find(t => t.id === act.taskId);
+              const targetUser = act.targetUserId ? users.find(u => u.id === act.targetUserId) : null;
+              const config = TYPE_CONFIG[act.type] || TYPE_CONFIG.comment;
+              if (!user) return null;
 
-            return (
-              <div
-                key={act.id}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  padding: '10px 14px', borderRadius: 8,
-                  background: 'var(--bg-secondary)',
-                  border: '1px solid var(--border)',
-                  fontSize: 13, transition: 'all 0.1s',
-                }}
-                onMouseEnter={e => {
-                  (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-light)';
-                  (e.currentTarget as HTMLElement).style.background = 'var(--bg-tertiary)';
-                }}
-                onMouseLeave={e => {
-                  (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)';
-                  (e.currentTarget as HTMLElement).style.background = 'var(--bg-secondary)';
-                }}
-              >
-                {/* User Avatar */}
-                <Avatar user={user} size={28} fontSize={10} />
-
-                {/* Content */}
-                <div style={{ flex: 1, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
-                  <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{getUserName(user)}</span>
-                  {' '}
-                  <span style={{ color: 'var(--text-secondary)' }}>{act.text}</span>
-                  {task && <span style={{ color: 'var(--accent)', fontWeight: 500 }}> "{task.title}"</span>}
-                  {targetUser && <span style={{ color: 'var(--text-muted)' }}> → {getUserName(targetUser)}</span>}
+              return (
+                <div key={act.id} className="timeline-item">
+                  <div className="timeline-dot" style={{ borderColor: config.color }}></div>
+                  <div className="timeline-content">
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+                        <Avatar user={user} size={20} fontSize={9} />
+                        <span style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: 13, flexShrink: 0 }}>{getUserName(user)}</span>
+                        <span style={{ color: 'var(--text-secondary)', fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {act.text}
+                          {task && <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}> "{task.title}"</span>}
+                          {targetUser && <span style={{ color: 'var(--text-muted)' }}> → {getUserName(targetUser)}</span>}
+                        </span>
+                      </div>
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>{timeAgo(act.time)}</span>
+                    </div>
+                  </div>
                 </div>
-
-                {/* Type Badge */}
-                <span style={{
-                  fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 500,
-                  background: config.bg, color: config.color, flexShrink: 0,
-                }}>{config.label}</span>
-
-                {/* Time */}
-                <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>{timeAgo(act.time)}</span>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
