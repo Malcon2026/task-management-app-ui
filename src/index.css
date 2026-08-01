@@ -137,21 +137,22 @@ body {
 .kanban-col {
   transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
+.kanban-col.col-drag-over {
+  background: var(--bg-tertiary) !important;
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 14px var(--accent-dim) !important;
+}
 .kanban-card {
-  transition: transform 0.15s ease, opacity 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
-  will-change: transform, opacity;
+  transition: opacity 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+  user-select: none;
 }
 .kanban-card:hover {
   border-color: var(--border-light) !important;
-  transform: translateY(-1px);
 }
 .kanban-card.is-dragging {
-  opacity: 0.4 !important;
-  transform: scale(0.98) !important;
-}
-.kanban-card.is-dragging:hover {
-  border-color: var(--border) !important;
-  transform: scale(0.98) !important;
+  opacity: 0.35 !important;
+  border-style: dashed !important;
+  border-color: var(--accent) !important;
 }
 .kanban-action-btn {
   background: none;

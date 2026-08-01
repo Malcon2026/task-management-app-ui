@@ -141,15 +141,15 @@ function AppInner() {
       </div>
 
       <TaskModal
-        isOpen={taskModalOpen}
+        open={taskModalOpen}
         onClose={() => setTaskModalOpen(false)}
-        taskToEdit={editingTask}
+        editTask={editingTask}
         defaultStatus={defaultStatus}
         defaultQuadrant={defaultQuadrant}
       />
 
       <UserModal
-        isOpen={userModalOpen}
+        open={userModalOpen}
         onClose={() => setUserModalOpen(false)}
       />
 

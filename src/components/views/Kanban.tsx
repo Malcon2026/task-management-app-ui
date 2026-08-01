@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Task, Status, User } from '../../types';
 import { isOverdue, formatDate } from '../../utils/helpers';
@@ -23,9 +23,8 @@ interface KanbanProps {
 
 export function Kanban({ onEdit, onAdd }: KanbanProps) {
   const { tasks, users, updateTaskStatus, deleteTask, showToast } = useApp();
-  const [draggedId, setDraggedId] = useState<number | null>(null);
-  const [dragOverCol, setDragOverCol] = useState<Status | null>(null);
   const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
+  const draggedTaskIdRef = useRef<number | null>(null);
 
   // Group tasks by status efficiently using useMemo
   const tasksByStatus = useMemo(() => {
@@ -50,28 +49,53 @@ export function Kanban({ onEdit, onAdd }: KanbanProps) {
     return map;
   }, [users]);
 
-  // Drag and Drop Handlers with reference stability
+  // Zero-rerender Drag & Drop Handlers
   const handleDragStart = useCallback((e: React.DragEvent, id: number) => {
     e.dataTransfer.setData('text/plain', id.toString());
     e.dataTransfer.effectAllowed = 'move';
-    setDraggedId(id);
+    draggedTaskIdRef.current = id;
+    const target = e.currentTarget as HTMLElement;
+    setTimeout(() => {
+      target.classList.add('is-dragging');
+    }, 0);
   }, []);
 
-  const handleDragEnd = useCallback(() => {
-    setDraggedId(null);
-    setDragOverCol(null);
+  const handleDragEnd = useCallback((e: React.DragEvent) => {
+    const target = e.currentTarget as HTMLElement;
+    target.classList.remove('is-dragging');
+    draggedTaskIdRef.current = null;
+    document.querySelectorAll('.kanban-col').forEach(el => el.classList.remove('col-drag-over'));
   }, []);
 
-  const handleDragOver = useCallback((e: React.DragEvent, status: Status) => {
+  const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    setDragOverCol(prev => (prev === status ? prev : status));
+  }, []);
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    const colEl = (e.currentTarget as HTMLElement).closest('.kanban-col');
+    if (colEl) {
+      colEl.classList.add('col-drag-over');
+    }
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    const colEl = (e.currentTarget as HTMLElement).closest('.kanban-col');
+    if (colEl && !colEl.contains(e.relatedTarget as Node)) {
+      colEl.classList.remove('col-drag-over');
+    }
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent, status: Status) => {
     e.preventDefault();
+    const colEl = (e.currentTarget as HTMLElement).closest('.kanban-col');
+    if (colEl) {
+      colEl.classList.remove('col-drag-over');
+    }
+
     const idStr = e.dataTransfer.getData('text/plain');
-    const id = idStr ? parseInt(idStr, 10) : draggedId;
+    const id = idStr ? parseInt(idStr, 10) : draggedTaskIdRef.current;
 
     if (id !== null && !isNaN(id)) {
       const task = tasks.find(t => t.id === id);
@@ -80,9 +104,9 @@ export function Kanban({ onEdit, onAdd }: KanbanProps) {
         showToast(`Moved "${task.title}" to ${status}`, 'info');
       }
     }
-    setDraggedId(null);
-    setDragOverCol(null);
-  }, [draggedId, tasks, updateTaskStatus, showToast]);
+    draggedTaskIdRef.current = null;
+    document.querySelectorAll('.kanban-col').forEach(el => el.classList.remove('col-drag-over'));
+  }, [tasks, updateTaskStatus, showToast]);
 
   const handleMoveClick = useCallback((taskId: number, newStatus: Status) => {
     updateTaskStatus(taskId, newStatus);
@@ -101,20 +125,20 @@ export function Kanban({ onEdit, onAdd }: KanbanProps) {
     >
       {COLUMNS.map(col => {
         const colTasks = tasksByStatus[col.key] || [];
-        const isTarget = dragOverCol === col.key;
 
         return (
           <div
             key={col.key}
             className="kanban-col"
-            onDragOver={e => handleDragOver(e, col.key)}
+            onDragOver={handleDragOver}
+            onDragEnter={handleDragEnter}
+            onDragLeave={handleDragLeave}
             onDrop={e => handleDrop(e, col.key)}
             style={{
-              background: isTarget ? 'var(--bg-tertiary)' : col.bg,
-              border: `1.5px solid ${isTarget ? 'var(--accent)' : 'var(--border)'}`,
+              background: col.bg,
+              border: '1.5px solid var(--border)',
               borderRadius: 10, display: 'flex', flexDirection: 'column',
               height: '100%', overflow: 'hidden',
-              boxShadow: isTarget ? '0 0 12px var(--accent-dim)' : 'none',
             }}
           >
             {/* Column Header */}
@@ -150,7 +174,6 @@ export function Kanban({ onEdit, onAdd }: KanbanProps) {
             }}>
               {colTasks.map(t => {
                 const user = usersById.get(t.assignedTo);
-                const isDraggingThis = draggedId === t.id;
                 const isMenuOpen = activeMenuId === t.id;
 
                 const PriorityIcon = t.priority === 'urgent' ? PriorityUrgent : t.priority === 'high' ? PriorityHigh : t.priority === 'medium' ? PriorityMedium : PriorityLow;
@@ -162,7 +185,7 @@ export function Kanban({ onEdit, onAdd }: KanbanProps) {
                     onDragStart={e => handleDragStart(e, t.id)}
                     onDragEnd={handleDragEnd}
                     onClick={() => onEdit(t)}
-                    className={`kanban-card ${isDraggingThis ? 'is-dragging' : ''}`}
+                    className="kanban-card"
                     style={{
                       background: 'var(--bg-secondary)',
                       border: '1px solid var(--border)',
