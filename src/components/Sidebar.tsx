@@ -11,7 +11,7 @@ import type { View } from '../types';
 
 const NAV_ITEMS: { key: View; icon: (p: any) => JSX.Element; label: string }[] = [
   { key: 'dashboard', icon: IconDashboard, label: 'Dashboard' },
-  { key: 'todo', icon: IconIssues, label: 'Issues' },
+  { key: 'todo', icon: IconIssues, label: 'Tasks' },
   { key: 'kanban', icon: IconBoard, label: 'Board' },
   { key: 'matrix', icon: IconMatrix, label: 'Matrix' },
   { key: 'activity', icon: IconActivity, label: 'Activity' },
@@ -140,7 +140,7 @@ export function Sidebar() {
         }}>Shortcuts</div>
 
         {[
-          { icon: IconArrowRight, label: 'My Issues', action: () => { navTo('todo'); showToast('Filtered: My Issues', 'info'); } },
+          { icon: IconArrowRight, label: 'My Tasks', action: () => { navTo('todo'); showToast('Filtered: My Tasks', 'info'); } },
           { icon: IconZap, label: 'Urgent', action: () => { navTo('todo'); showToast('Filtered: Urgent', 'info'); } },
         ].map(f => (
           <div

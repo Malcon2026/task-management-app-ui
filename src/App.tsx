@@ -16,7 +16,7 @@ import type { Task, Status, Quadrant } from './types';
 
 const VIEW_LABELS: Record<string, string> = {
   dashboard: 'Dashboard',
-  todo: 'Issues',
+  todo: 'Tasks',
   matrix: 'Matrix',
   kanban: 'Board',
   activity: 'Activity',
@@ -119,7 +119,7 @@ function AppInner() {
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'var(--accent)'; }}
             >
               <IconPlus size={13} />
-              <span>Issue</span>
+              <span>Task</span>
             </button>
           </div>
         </header>

@@ -40,9 +40,9 @@ export function Dashboard() {
         borderBottom: '1px solid var(--border)', flexShrink: 0,
       }}>
         <MetricCard
-          title="Total Issues"
+          title="Total Tasks"
           value={total}
-          subtext="Total workspace issues"
+          subtext="Total workspace tasks"
           icon={<IconIssues size={18} color="var(--accent)" />}
           badge="Workspace"
         />
@@ -169,7 +169,7 @@ export function Dashboard() {
 
         {/* Recent Tasks Column */}
         <SectionCard
-          title="Recent Issues"
+          title="Recent Tasks"
           subtitle="Newly created or updated tasks"
           icon={<IconClock size={16} color="var(--text-secondary)" />}
         >
@@ -235,7 +235,7 @@ export function Dashboard() {
         {/* Team Workload */}
         <SectionCard
           title="Team Distribution"
-          subtitle="Active issue load by member"
+          subtitle="Active task load by member"
           icon={<IconUsers size={16} color="var(--text-secondary)" />}
         >
           {users.map(u => {

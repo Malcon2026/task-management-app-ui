@@ -2,16 +2,16 @@ import { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Avatar } from '../ui/Avatar';
 import { timeAgo, getUserName } from '../../utils/helpers';
-import { IconSearch, IconTrash, IconPlus, IconActivity } from '../ui/Icons';
+import { IconSearch, IconTrash, IconActivity, IconCheck, IconPlus } from '../ui/Icons';
 import type { ActivityType } from '../../types';
 
-const TYPE_LABELS: Record<string, { label: string; color: string }> = {
-  create: { label: 'Created', color: 'var(--green)' },
-  update: { label: 'Updated', color: 'var(--blue)' },
-  complete: { label: 'Completed', color: 'var(--accent)' },
-  delete: { label: 'Deleted', color: 'var(--red)' },
-  assign: { label: 'Assigned', color: 'var(--yellow)' },
-  comment: { label: 'Note', color: 'var(--purple)' },
+const TYPE_CONFIG: Record<ActivityType, { label: string; color: string; bg: string }> = {
+  create: { label: 'Created', color: '#22c55e', bg: 'rgba(34, 197, 94, 0.12)' },
+  update: { label: 'Updated', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.12)' },
+  complete: { label: 'Completed', color: 'var(--accent)', bg: 'rgba(94, 106, 210, 0.12)' },
+  delete: { label: 'Deleted', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.12)' },
+  assign: { label: 'Assigned', color: '#eab308', bg: 'rgba(234, 179, 8, 0.12)' },
+  comment: { label: 'Note', color: '#a855f7', bg: 'rgba(168, 85, 247, 0.12)' },
 };
 
 type FilterType = 'all' | ActivityType;
@@ -51,7 +51,7 @@ export function ActivityLog() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Header Bar */}
+      {/* Navigation Filter Bar */}
       <div style={{
         display: 'flex', alignItems: 'center', padding: '0 20px',
         borderBottom: '1px solid var(--border)', gap: 0,
@@ -76,13 +76,13 @@ export function ActivityLog() {
           <div style={{
             display: 'flex', alignItems: 'center', gap: 6,
             background: 'var(--bg-primary)', border: '1px solid var(--border)',
-            borderRadius: 6, padding: '3px 8px', width: 140,
+            borderRadius: 6, padding: '3px 8px', width: 150,
           }}>
             <IconSearch size={12} color="var(--text-muted)" />
             <input
               type="text" value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search..."
+              placeholder="Search timeline..."
               style={{
                 background: 'none', border: 'none', outline: 'none',
                 color: 'var(--text-primary)', fontSize: 12, width: '100%',
@@ -97,7 +97,7 @@ export function ActivityLog() {
               fontSize: 12, cursor: 'pointer', transition: 'all 0.1s',
               display: 'flex', alignItems: 'center', gap: 4,
             }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--red)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(229,72,77,0.3)'; }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--red)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(239,68,68,0.3)'; }}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'; }}
           >
             <IconTrash size={12} />
@@ -106,18 +106,18 @@ export function ActivityLog() {
         </div>
       </div>
 
-      {/* Post Note */}
+      {/* Post Status Note Header */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10,
-        padding: '8px 20px', background: 'var(--bg-secondary)',
+        padding: '10px 20px', background: 'var(--bg-secondary)',
         borderBottom: '1px solid var(--border)',
       }}>
-        <IconActivity size={14} color="var(--text-muted)" />
+        <IconActivity size={15} color="var(--text-muted)" />
         <input
           type="text" value={noteText}
           onChange={e => setNoteText(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && postNote()}
-          placeholder="Post a status note or update to the team timeline..."
+          placeholder="Post a status update or team note... (Press Enter)"
           style={{
             flex: 1, background: 'transparent', border: 'none', outline: 'none',
             color: 'var(--text-primary)', fontSize: 13, fontFamily: 'inherit',
@@ -132,65 +132,67 @@ export function ActivityLog() {
             fontSize: 12, cursor: 'pointer', fontWeight: 500,
             transition: 'all 0.1s',
           }}
-        >Post Note</button>
+        >Post</button>
       </div>
 
-      {/* Activity List */}
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+      {/* Timeline Stream */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '12px 20px' }}>
         {filtered.length === 0 && (
           <div style={{ padding: '48px 20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-            No activity logged
+            No activity events recorded
           </div>
         )}
-        {filtered.map(act => {
-          const user = users.find(u => u.id === act.userId);
-          const task = tasks.find(t => t.id === act.taskId);
-          const targetUser = act.targetUserId ? users.find(u => u.id === act.targetUserId) : null;
-          const typeInfo = TYPE_LABELS[act.type] || TYPE_LABELS.comment;
-          if (!user) return null;
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {filtered.map(act => {
+            const user = users.find(u => u.id === act.userId);
+            const task = tasks.find(t => t.id === act.taskId);
+            const targetUser = act.targetUserId ? users.find(u => u.id === act.targetUserId) : null;
+            const config = TYPE_CONFIG[act.type] || TYPE_CONFIG.comment;
+            if (!user) return null;
 
-          return (
-            <div
-              key={act.id}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 12,
-                padding: '10px 20px',
-                borderBottom: '1px solid var(--border)',
-                fontSize: 13, transition: 'background 0.08s',
-              }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-            >
-              {/* Type dot */}
-              <div style={{
-                width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
-                background: typeInfo.color,
-              }} />
+            return (
+              <div
+                key={act.id}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '10px 14px', borderRadius: 8,
+                  background: 'var(--bg-secondary)',
+                  border: '1px solid var(--border)',
+                  fontSize: 13, transition: 'all 0.1s',
+                }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-light)';
+                  (e.currentTarget as HTMLElement).style.background = 'var(--bg-tertiary)';
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)';
+                  (e.currentTarget as HTMLElement).style.background = 'var(--bg-secondary)';
+                }}
+              >
+                {/* User Avatar */}
+                <Avatar user={user} size={28} fontSize={10} />
 
-              {/* Avatar */}
-              <Avatar user={user} size={22} fontSize={9} />
+                {/* Content */}
+                <div style={{ flex: 1, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                  <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{getUserName(user)}</span>
+                  {' '}
+                  <span style={{ color: 'var(--text-secondary)' }}>{act.text}</span>
+                  {task && <span style={{ color: 'var(--accent)', fontWeight: 500 }}> "{task.title}"</span>}
+                  {targetUser && <span style={{ color: 'var(--text-muted)' }}> → {getUserName(targetUser)}</span>}
+                </div>
 
-              {/* Content */}
-              <div style={{ flex: 1, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
-                <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{getUserName(user)}</span>
-                {' '}
-                <span style={{ color: 'var(--text-secondary)' }}>{act.text}</span>
-                {task && <span style={{ color: 'var(--accent)', fontWeight: 500 }}> "{task.title}"</span>}
-                {targetUser && <span style={{ color: 'var(--text-muted)' }}> → {getUserName(targetUser)}</span>}
+                {/* Type Badge */}
+                <span style={{
+                  fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 500,
+                  background: config.bg, color: config.color, flexShrink: 0,
+                }}>{config.label}</span>
+
+                {/* Time */}
+                <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>{timeAgo(act.time)}</span>
               </div>
-
-              {/* Type badge */}
-              <span style={{
-                fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 500,
-                background: `color-mix(in srgb, ${typeInfo.color} 12%, transparent)`,
-                color: typeInfo.color, flexShrink: 0,
-              }}>{typeInfo.label}</span>
-
-              {/* Time */}
-              <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>{timeAgo(act.time)}</span>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </div>
   );
